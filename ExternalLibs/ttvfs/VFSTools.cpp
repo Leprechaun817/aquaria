@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cctype>
 #include <stack>
+#include <cstdio>
 
 #include "VFSTools.h"
 

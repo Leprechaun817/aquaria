@@ -82,7 +82,7 @@ VFS_NAMESPACE_START
 #    define VFS_GUARD_OPT(obj)
 #endif
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) || defined(__MINGW32__) || defined(__MINGW64__)
 #    define VFS_STRICMP stricmp
 #else
 #    define VFS_STRICMP strcasecmp

@@ -6,6 +6,7 @@
 
 #include "VFSBase.h"
 #include <map>
+#include <cstring>
 
 #ifdef VFS_USE_HASHMAP
 #  include "VFSHashmap.h"

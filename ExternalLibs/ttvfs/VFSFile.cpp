@@ -6,6 +6,8 @@
 #include "VFSTools.h"
 #include "VFSFileFuncs.h"
 
+#include <cstdio>
+
 VFS_NAMESPACE_START
 
 VFSFile::VFSFile(const char *name)
