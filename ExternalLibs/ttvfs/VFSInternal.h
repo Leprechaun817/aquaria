@@ -14,8 +14,12 @@
 #include "VFSDefines.h"
 
 #if _MSC_VER
+# ifndef _CRT_SECURE_NO_WARNINGS
 #   define _CRT_SECURE_NO_WARNINGS
+# endif
+#ifndef _CRT_SECURE_NO_DEPRECATE
 #   define _CRT_SECURE_NO_DEPRECATE
+#endif
 #   pragma warning(disable: 4355) // 'this' : used in base member initializer list
 #endif
 

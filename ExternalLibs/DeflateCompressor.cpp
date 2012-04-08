@@ -1,4 +1,3 @@
-#include "Base.h"
 
 #include <zutil.h>
 #include <zlib.h>
@@ -7,6 +6,8 @@
 
 // for weird gcc/mingw hackfix below
 #include <string.h>
+
+#define PRINTFAIL(s) fprintf(stderr, (s))
 
 
 DeflateCompressor::DeflateCompressor()
@@ -52,28 +53,28 @@ void DeflateCompressor::compress(void* dst, uint32 *dst_size, const void* src, u
 
     if (Z_OK != deflate(&c_stream, Z_NO_FLUSH))
     {
-        errorLog("ZLIB: Can't compress (zlib: deflate)");
+        PRINTFAIL("ZLIB: Can't compress (zlib: deflate)");
         *dst_size = 0;
         return;
     }
 
     if (c_stream.avail_in != 0)
     {
-        errorLog("Can't compress (zlib: deflate not greedy)");
+        PRINTFAIL("Can't compress (zlib: deflate not greedy)");
         *dst_size = 0;
         return;
     }
 
     if (Z_STREAM_END != deflate(&c_stream, Z_FINISH))
     {
-        errorLog("Can't compress (zlib: deflate, finish)");
+        PRINTFAIL("Can't compress (zlib: deflate, finish)");
         *dst_size = 0;
         return;
     }
 
     if (Z_OK != deflateEnd(&c_stream))
     {
-        errorLog("Can't compress (zlib: deflateEnd)");
+        PRINTFAIL("Can't compress (zlib: deflateEnd)");
         *dst_size = 0;
         return;
     }
@@ -170,7 +171,7 @@ void DeflateCompressor::Decompress(void)
         {
             char errbuf[256];
             sprintf(errbuf, "DeflateCompressor: Inflate error! cursize=%u origsize=%u realsize=%u",size(),origsize,rs);
-            errorLog(errbuf);
+            PRINTFAIL(errbuf);
             delete [] target;
             return;
         }

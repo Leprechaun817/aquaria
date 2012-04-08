@@ -110,20 +110,22 @@ bool VFSDir::insert(VFSDir *subdir, bool overwrite /* = true */)
         return false;
 
     VFS_GUARD_OPT(this);
+
+    // With load() cleaning up the tree, it is ok to add subsequent VFSDirs directly.
+    // This will be very useful at some point when files can be mounted into a directory
+    // belonging to an archive, and this way adding files to the archive.
     Dirs::iterator it = _subdirs.find(subdir->name());
-    VFSDir *mydir;
-    if(it != _subdirs.end())
+    if(it == _subdirs.end())
     {
-        mydir = it->second;
+        subdir->ref++;
+        _subdirs[subdir->name()] = subdir;
+        return true;
     }
     else
     {
-        // create a new subtree, not to pollute the original one with data that may be added later
-        mydir = subdir->createNew(subdir->fullname()); // create subdir of same type
-        _subdirs[mydir->name()] = mydir;
+        it->second->merge(subdir, overwrite);
+        return false;
     }
-
-    return mydir->merge(subdir, overwrite);
 }
 
 VFSFile *VFSDir::getFile(const char *fn)
@@ -212,19 +214,24 @@ VFSDir *VFSDir::getDir(const char *subdir, bool forceCreate /* = false */)
         {
             // -> newname = fullname() + '/' + t
             size_t fullLen = fullnameLen();
-            char * const newname = (char*)VFS_STACK_ALLOC(fullLen + copysize + 2);
-            char *ptr = newname;
-            memcpy(ptr, fullname(), fullLen);
-            ptr += fullLen;
-            *ptr++ = '/';
-            memcpy(ptr, t, copysize);
-            ptr[copysize] = 0;
+            VFSDir *ins;
+            if(fullLen)
+            {
+                char * const newname = (char*)VFS_STACK_ALLOC(fullLen + copysize + 2);
+                char *ptr = newname;
+                memcpy(ptr, fullname(), fullLen);
+                ptr += fullLen;
+                *ptr++ = '/';
+                memcpy(ptr, t, copysize);
+                ptr[copysize] = 0;
+                ins = createNew(newname);
+                VFS_STACK_FREE(newname);
+            }
+            else
+                ins = createNew(t);
 
-            VFSDir *ins = createNew(newname);
             _subdirs[ins->name()] = ins;
             ret = ins->getDir(sub, true); // create remaining structure
-
-            VFS_STACK_FREE(newname);
         }
     }
     else
