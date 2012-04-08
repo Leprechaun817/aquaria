@@ -170,27 +170,6 @@ DSQ::DSQ(std::string fileSystem) : Core(fileSystem, LR_MAX, APPNAME, PARTICLE_AM
 	almb = armb = 0;
 	bar_left = bar_right = bar_up = bar_down = barFade_left = barFade_right = 0;
 	
-	// do copy stuff
-#ifdef BBGE_BUILD_UNIX
-	std::string fn;
-	fn = getPreferencesFolder() + "/" + userSettingsFilename;
-	if (!exists(fn))
-		Linux_CopyTree(core->adjustFilenameCase(userSettingsFilename).c_str(), core->adjustFilenameCase(fn).c_str());
-
-	fn = getUserDataFolder() + "/_mods";
-	if (!exists(fn))
-		Linux_CopyTree(core->adjustFilenameCase("_mods").c_str(), core->adjustFilenameCase(fn).c_str());
-#endif
-
-	std::string p1 = getUserDataFolder();
-	std::string p2 = getUserDataFolder() + "/save";
-#if defined(BBGE_BUILD_UNIX)
-	mkdir(p1.c_str(), S_IRWXU);
-	mkdir(p2.c_str(), S_IRWXU);
-#elif defined(BBGE_BUILD_WINDOWS)
-	CreateDirectoryA(p2.c_str(), NULL);
-#endif
-	
 	difficulty = DIFF_NORMAL;
 
 	/*
@@ -228,9 +207,6 @@ DSQ::DSQ(std::string fileSystem) : Core(fileSystem, LR_MAX, APPNAME, PARTICLE_AM
 	achievement_box = 0;
 #endif
 
-	vars = &v;
-	v.load();
-
 #ifdef AQUARIA_BUILD_CONSOLE
 	console = 0;
 #endif
@@ -251,25 +227,6 @@ DSQ::DSQ(std::string fileSystem) : Core(fileSystem, LR_MAX, APPNAME, PARTICLE_AM
 
 	for (int i = 0; i < 16; i++)
 		firstElementOnLayer[i] = 0;
-
-	addStateInstance(game = new Game);
-	addStateInstance(new GameOver);
-#ifdef AQUARIA_BUILD_SCENEEDITOR
-	addStateInstance(new AnimationEditor);
-#endif
-	addStateInstance(new Intro2);
-	addStateInstance(new BitBlotLogo);
-#ifdef AQUARIA_BUILD_SCENEEDITOR
-	addStateInstance(new ParticleEditor);
-#endif
-	addStateInstance(new Credits);
-	addStateInstance(new Intro);
-	addStateInstance(new Nag);
-
-	//addStateInstance(new Logo);
-	//addStateInstance(new SCLogo);
-	//addStateInstance(new IntroText);
-	//addStateInstance(new Intro);
 
 	//stream = 0;
 }
@@ -949,6 +906,49 @@ This build is not yet final, and as such there are a couple things lacking. They
 
 	// steam callbacks are inited here
 	dsq->continuity.init();
+
+	vars = &v;
+	v.load();
+
+	// do copy stuff
+#ifdef BBGE_BUILD_UNIX
+	std::string fn;
+	fn = getPreferencesFolder() + "/" + userSettingsFilename;
+	if (!exists(fn))
+		Linux_CopyTree(core->adjustFilenameCase(userSettingsFilename).c_str(), core->adjustFilenameCase(fn).c_str());
+
+	fn = getUserDataFolder() + "/_mods";
+	if (!exists(fn))
+		Linux_CopyTree(core->adjustFilenameCase("_mods").c_str(), core->adjustFilenameCase(fn).c_str());
+#endif
+
+	std::string p1 = getUserDataFolder();
+	std::string p2 = getUserDataFolder() + "/save";
+#if defined(BBGE_BUILD_UNIX)
+	mkdir(p1.c_str(), S_IRWXU);
+	mkdir(p2.c_str(), S_IRWXU);
+#elif defined(BBGE_BUILD_WINDOWS)
+	CreateDirectoryA(p2.c_str(), NULL);
+#endif
+
+	addStateInstance(game = new Game);
+	addStateInstance(new GameOver);
+#ifdef AQUARIA_BUILD_SCENEEDITOR
+	addStateInstance(new AnimationEditor);
+#endif
+	addStateInstance(new Intro2);
+	addStateInstance(new BitBlotLogo);
+#ifdef AQUARIA_BUILD_SCENEEDITOR
+	addStateInstance(new ParticleEditor);
+#endif
+	addStateInstance(new Credits);
+	addStateInstance(new Intro);
+	addStateInstance(new Nag);
+
+	//addStateInstance(new Logo);
+	//addStateInstance(new SCLogo);
+	//addStateInstance(new IntroText);
+	//addStateInstance(new Intro);
 
 	//packReadInfo("mus.dat");
 
@@ -3769,7 +3769,7 @@ std::string DSQ::getDialogueFilename(const std::string &f)
 	return "dialogue/" + languagePack + "/" + f + ".txt";
 }
 
-void DSQ::jumpToSection(std::ifstream &inFile, const std::string &section)
+void DSQ::jumpToSection(InStream &inFile, const std::string &section)
 {
 	if (section.empty()) return;
 	std::string file = dsq->getDialogueFilename(dialogueFile);

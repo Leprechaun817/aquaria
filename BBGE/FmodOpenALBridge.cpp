@@ -53,7 +53,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 class OggDecoder {
 public:
     // Create a decoder that streams from a file.
-    OggDecoder(FILE *fp);
+    OggDecoder(VFILE *fp);
 
     // Create a decoder that streams from a memory buffer.
     OggDecoder(const void *data, long data_size);
@@ -98,7 +98,7 @@ private:
 
     // Data source.  If fp != NULL, the source is that file; otherwise, the
     // source is the buffer pointed to by "data" with size "data_size" bytes.
-    FILE *fp;
+    VFILE *fp;
     const char *data;
     long data_size;
     long data_pos;  // Current read position for memory buffers
@@ -129,22 +129,16 @@ private:
 // ov_open_callbacks() call.  Note that we rename the fseek() wrapper
 // to avoid an identifier collision when building with more recent
 // versions of libvorbis.
-static int BBGE_ov_header_fseek_wrap(FILE *f,ogg_int64_t off,int whence){
+static int BBGE_ov_header_fseek_wrap(VFILE *f,ogg_int64_t off,int whence){
   if(f==NULL)return(-1);
-#ifdef __MINGW32__
-  return fseeko64(f,off,whence);
-#elif defined (_WIN32)
-  return _fseeki64(f,off,whence);
-#else
-  return fseek(f,off,whence);
-#endif
+  return vfseek(f,(long int)off,whence); // no ogg file is larger than 4 GB, int-cast should be ok
 }
 static int noclose(FILE *f) {return 0;}
 static const ov_callbacks local_OV_CALLBACKS_NOCLOSE = {
-  (size_t (*)(void *, size_t, size_t, void *))  fread,
+  (size_t (*)(void *, size_t, size_t, void *))  vfread,
   (int (*)(void *, ogg_int64_t, int))           BBGE_ov_header_fseek_wrap,
   (int (*)(void *))                             noclose,  // NULL doesn't work in libvorbis-1.1.2
-  (long (*)(void *))                            ftell
+  (long (*)(void *))                            vftell
 };
 
 // Memory I/O callback set.
@@ -156,7 +150,7 @@ static const ov_callbacks ogg_memory_callbacks = {
 };
 
 
-OggDecoder::OggDecoder(FILE *fp)
+OggDecoder::OggDecoder(VFILE *fp)
 {
     for (int i = 0; i < NUM_BUFFERS; i++)
     {
@@ -522,9 +516,9 @@ namespace FMOD {
 class OpenALSound
 {
 public:
-    OpenALSound(FILE *_fp, const bool _looping);
+    OpenALSound(VFILE *_fp, const bool _looping);
     OpenALSound(void *_data, long _size, const bool _looping);
-    FILE *getFile() const { return fp; }
+    VFILE *getFile() const { return fp; }
     const void *getData() const { return data; }
     long getSize() const { return size; }
     bool isLooping() const { return looping; }
@@ -532,14 +526,14 @@ public:
     void reference() { refcount++; }
 
 private:
-    FILE * const fp;
+    VFILE * const fp;
     void * const data;  // Only used if fp==NULL
     const long size;    // Only used if fp==NULL
     const bool looping;
     int refcount;
 };
 
-OpenALSound::OpenALSound(FILE *_fp, const bool _looping)
+OpenALSound::OpenALSound(VFILE *_fp, const bool _looping)
     : fp(_fp)
     , data(NULL)
     , size(0)
@@ -564,7 +558,7 @@ FMOD_RESULT OpenALSound::release()
     if (refcount <= 0)
     {
 	if (fp)
-	    fclose(fp);
+	    vfclose(fp);
 	else
 	    free(data);
         delete this;
@@ -1068,8 +1062,7 @@ FMOD_RESULT OpenALSystem::createSound(const char *name_or_data, const FMOD_MODE 
     strcat(fname, ".ogg");
 
     // just in case...
-    #undef fopen
-    FILE *io = fopen(core->adjustFilenameCase(fname).c_str(), "rb");
+    VFILE *io = vfopen(core->adjustFilenameCase(fname).c_str(), "rb");
     if (io == NULL)
         return FMOD_ERR_INTERNAL;
 
@@ -1080,12 +1073,12 @@ FMOD_RESULT OpenALSystem::createSound(const char *name_or_data, const FMOD_MODE 
     }
     else
     {
-        fseek(io, 0, SEEK_END);
-        long size = ftell(io);
-        if (fseek(io, 0, SEEK_SET) != 0)
+        vfseek(io, 0, SEEK_END);
+        long size = vftell(io);
+        if (vfseek(io, 0, SEEK_SET) != 0)
         {
             debugLog("Seek error on " + std::string(fname));
-            fclose(io);
+            vfclose(io);
             return FMOD_ERR_INTERNAL;
         }
 
@@ -1093,12 +1086,13 @@ FMOD_RESULT OpenALSystem::createSound(const char *name_or_data, const FMOD_MODE 
         if (data == NULL)
         {
             debugLog("Out of memory for " + std::string(fname));
-            fclose(io);
+            vfclose(io);
             return FMOD_ERR_INTERNAL;
         }
 
-        long nread = fread(data, 1, size, io);
-        fclose(io);
+        long nread = vfread(data, 1, size, io);
+        vfclose(io);
+        vfclear(io);
         if (nread != size)
         {
             debugLog("Failed to read data from " + std::string(fname));

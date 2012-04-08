@@ -705,6 +705,26 @@ static bool findFile_helper(const char *rawname, std::string &fname)
 	return exists(fname);
 }
 
+static int loadFile_helper(lua_State *L, const char *fn)
+{
+#ifdef BBGE_BUILD_VFS
+	VFILE *vf = vfs.GetFile(fn);
+	if (!vf)
+	{
+		lua_pushfstring(L, "cannot open %s: %s", fn, strerror(errno));
+		return LUA_ERRFILE;
+	}
+	else
+	{
+		int result = luaL_loadbuffer(L, (const char*)vf->getBuf(), vf->size(), fn);
+		vf->dropBuf(true);
+		return result;
+	}
+#else
+	return luaL_loadfile(L, fn);
+#endif
+}
+
 luaFunc(dofile_caseinsensitive)
 {
 	// This is Lua's dofile(), with some tweaks.  --ryan.
@@ -712,7 +732,7 @@ luaFunc(dofile_caseinsensitive)
 	findFile_helper(luaL_checkstring(L, 1), fname);
 
 	int n = lua_gettop(L);
-	if (luaL_loadfile(L, fname.c_str()) != 0)
+	if (loadFile_helper(L, fname.c_str()) != 0)
 		lua_error(L);
 	lua_call(L, 0, LUA_MULTRET);
 	return lua_gettop(L) - n;
@@ -724,7 +744,7 @@ luaFunc(loadfile_caseinsensitive)
 	std::string fname;
 	findFile_helper(luaL_checkstring(L, 1), fname);
 
-	if (luaL_loadfile(L, fname.c_str()) == 0)  /* OK? */
+	if (loadFile_helper(L, fname.c_str()) == 0)  /* OK? */
 		return 1;
 	else
 	{
@@ -8876,7 +8896,7 @@ Script *ScriptInterface::openScript(const std::string &file, bool ignoremissing 
 		lua_getglobal(baseState, "v");
 
 		// Load the file itself.  This leaves the Lua chunk on the stack.
-		int result = luaL_loadfile(baseState, realFile.c_str());
+		int result = loadFile_helper(baseState, realFile.c_str());
 		if (result != 0)
 		{
 			if(result != LUA_ERRFILE || (result == LUA_ERRFILE && !ignoremissing))

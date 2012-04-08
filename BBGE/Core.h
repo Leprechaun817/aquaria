@@ -1395,6 +1395,8 @@ protected:
 	int tgaSaveSeries(char	*filename,  short int width, short int height, unsigned char pixelDepth, unsigned char *imageData);
 	virtual void onUpdate(float dt);
 	virtual void onRender(){}
+
+	void setupFileAccess();
 };
 
 extern Core *core;

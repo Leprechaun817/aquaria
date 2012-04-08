@@ -1252,6 +1252,8 @@ bool Core::isShuttingDown()
 
 void Core::init()
 {
+	setupFileAccess();
+
 	flags.set(CF_CLEARBUFFERS);
 	quitNestedMainFlag = false;
 #ifdef BBGE_BUILD_GLFW
@@ -4078,6 +4080,11 @@ void Core::shutdown()
 	debugLog("OK");
 #endif
 
+#ifdef BBGE_BUILD_VFS
+	debugLog("Unload VFS...");
+		vfs.Clear();
+	debugLog("OK");
+#endif
 
 
 #ifdef BBGE_BUILD_SDL
@@ -4757,3 +4764,31 @@ int Core::tgaSaveSeries(char		*filename,
 //	ilutGLScreenie();
  }
 
+#include "ttvfs_zip/VFSZipArchiveLoader.h"
+
+void Core::setupFileAccess()
+{
+#ifdef BBGE_BUILD_VFS
+	debugLog("Init VFS...");
+
+	if(!ttvfs::checkCompat())
+		exit(1);
+
+	vfs.AddArchiveLoader(new ttvfs::VFSZipArchiveLoader);
+
+	if(!vfs.LoadFileSysRoot(false))
+	{
+		errorLog("Failed to setup file access");
+		exit(1);
+	}
+	
+	vfs.Prepare();
+
+	// TODO: mount and other stuff
+
+	//vfs.AddArchive("aqfiles.zip", false, "");
+
+
+	debugLog("Done");
+#endif
+}

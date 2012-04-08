@@ -60,11 +60,22 @@ char *vfgets(char *str, int num, VFILE *vf)
 		num = remain;
 	else
 		--num; // be sure to keep space for the final null char
-	for(int i = 0; i < num && *ptr; ++i)
+	int i = 0;
+	char c;
+	for( ; i < num && *ptr; ++i)
 	{
-		if((*s++ = *ptr++) == '\n')
+		c = (*s++ = *ptr++);
+		if(c == '\n' || c == '\r')
+		{
+			++i;
+			c = *ptr++; // because windows linebreaks suck.
+			if(c == '\n' || c == '\r')
+				++i;
 			break;
+		}
 	}
+	
+	vf->seekRel(i);
 	*s++ = 0;
 	return str;
 }

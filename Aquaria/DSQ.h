@@ -1394,7 +1394,7 @@ public:
 	void takeScreenshot();
 	void takeScreenshotKey();
 
-	void jumpToSection(std::ifstream &inFile, const std::string &section);
+	void jumpToSection(InStream &inFile, const std::string &section);
 
 	PathFinding pathFinding;
 	void runGesture(const std::string &line);

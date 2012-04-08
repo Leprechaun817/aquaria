@@ -870,7 +870,7 @@ void Continuity::loadTreasureData()
 	std::string line, gfx;
 	int num, use;
 	float sz;
-	std::ifstream in2("data/treasures.txt");
+	InStream in2("data/treasures.txt");
 	while (std::getline(in2, line))
 	{
 		std::istringstream is(line);
@@ -903,7 +903,7 @@ void Continuity::loadIngredientData(const std::string &file)
 
 	/*
 	int num;
-	std::ifstream in2("data/ingredientdescriptions.txt");
+	InStream in2("data/ingredientdescriptions.txt");
 	while (std::getline(in2, line))
 	{
 		IngredientDescription desc;
@@ -916,7 +916,7 @@ void Continuity::loadIngredientData(const std::string &file)
 	clearIngredientData();
 	recipes.clear();
 
-	std::ifstream in(file.c_str());
+	InStream in(file.c_str());
 
 	bool recipes = false;
 	while (std::getline(in, line))
@@ -1241,7 +1241,7 @@ void Continuity::loadEatBank()
 {
 	eats.clear();
 
-	std::ifstream inf("data/eats.txt");
+	InStream inf("data/eats.txt");
 
 	EatData curData;
 	std::string read;
@@ -2183,7 +2183,7 @@ void Continuity::setActivePet(int flag)
 void Continuity::loadPetData()
 {
 	petData.clear();
-	std::ifstream in("data/pets.txt");
+	InStream in("data/pets.txt");
 	std::string read;
 	while (std::getline(in, read))
 	{
@@ -3262,7 +3262,7 @@ void Continuity::reset()
 	health = maxHealth;
 
 	speedTypes.clear();
-	std::ifstream inFile("data/speedtypes.txt");
+	InStream inFile("data/speedtypes.txt");
 	int n, spd;
 	while (inFile >> n)
 	{

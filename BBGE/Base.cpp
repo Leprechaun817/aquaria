@@ -272,31 +272,35 @@ std::string upperCase(const std::string &s1)
 	return ret;
 }
 
-bool exists(const std::string &f, bool makeFatal)
+bool exists(const std::string &f, bool makeFatal, bool skipVFS)
 {
-	/*
-	if (!PHYSFS_exists(f.c_str()))
-	{
-	*/
-	/*
-        std::ostringstream os;
-        os << "checking to see if [" << f << "] exists";
-        debugLog(os.str());
-        */
+	bool e = false;
 
-		FILE *file = fopen(core->adjustFilenameCase(f).c_str(), "rb");
-		if (!file)
+#ifdef BBGE_BUILD_VFS
+	if (!skipVFS)
+	{
+		e = !!vfs.GetFile(f.c_str());
+	}
+	else
+#endif
+	if (!e)
+	{
+		std::string tmp = core->adjustFilenameCase(f);
+		FILE *file = fopen(tmp.c_str(), "rb");
+		if (file)
 		{
-			if (makeFatal)
-			{
-				errorLog(std::string("Could not open [" + f + "]"));
-				exit(0);
-			}
-			return false;
+			e = true;
+			fclose(file);
 		}
-		fclose(file);
-	//}
-	return true;
+	}
+
+	if (makeFatal && !e)
+	{
+		errorLog(std::string("Could not open [" + f + "]"));
+		exit(0);
+	}
+
+	return e;
 }
 
 void drawCircle(float radius, int stepSize)
@@ -446,13 +450,22 @@ void debugLog(const std::string &s)
 // also obtain the data length by passing a pointer to an unsigned long
 // as the (optional) second parameter.  The buffer should be freed with
 // delete[] when no longer needed.
-char *readFile(std::string path, unsigned long *size_ret)
+char *readFile(const std::string& path, unsigned long *size_ret)
 {
+	long fileSize;
+#ifdef BBGE_BUILD_VFS
+	VFILE *vf = vfs.GetFile(path.c_str());
+	if (!vf)
+		return NULL;
+	fileSize = vf->size();
+	char *buffer = (char*)vf->getBuf(NULL, NULL);
+	vf->dropBuf(false);
+#else
 	FILE *f = fopen(path.c_str(), "rb");
 	if (!f)
 		return NULL;
 
-	long fileSize;
+
 	if (fseek(f, 0, SEEK_END) != 0
 	 || (fileSize = ftell(f)) < 0
 	 || fseek(f, 0, SEEK_SET) != 0)
@@ -483,11 +496,12 @@ char *readFile(std::string path, unsigned long *size_ret)
 		fclose(f);
 		return NULL;
 	}
-
 	fclose(f);
+	buffer[fileSize] = 0;
+#endif
+
 	if (size_ret)
 		*size_ret = fileSize;
-	buffer[fileSize] = 0;
 	return buffer;
 }
 
@@ -551,13 +565,49 @@ std::string stripEndlineForUnix(const std::string &in)
 	return out;
 }
 
+#ifdef BBGE_BUILD_VFS
+static void incref_all(const std::pair<std::string, ttvfs::VFSFile*>& p) { ++(p.second->ref); }
+static void decref_all(const std::pair<std::string, ttvfs::VFSFile*>& p) { --(p.second->ref); }
+#endif
+
 void forEachFile(std::string path, std::string type, void callback(const std::string &filename, intptr_t param), intptr_t param)
 {
 	if (path.empty()) return;
+	stringToLower(type);
+
+#ifdef BBGE_BUILD_VFS
+	ttvfs::VFSDir *vd = vfs.GetDir(path.c_str(), true); // add to tree if it wasn't loaded before
+	if(!vd)
+	{
+		debugLog("Path '" + path + "' does not exist");
+		return;
+	}
+	vd->load(false); // FIXME: need to reload when enumerating files?
+
+	ttvfs::VFSDir::Files fileset = vd->_files; // make a copy, this is intentional in case the callback modifies the tree
+	std::for_each(fileset.begin(), fileset.end(), incref_all); // and because we are storing these now, do correct ref counting
+
+	for(ttvfs::FileIter it = fileset.begin(); it != fileset.end(); ++it)
+	{
+		const ttvfs::VFSFile *f = it->second;
+		const char *e = strrchr(f->name(), '.');
+		if (e)
+		{
+			std::string exs(e);
+			stringToLower(exs);
+			if(exs != type)
+				continue;
+		}
+
+		callback(path + f->name(), param);
+	}
+	std::for_each(fileset.begin(), fileset.end(), decref_all);
+
+	return;
+	// -------------------------------------
+#endif
 
 	path = core->adjustFilenameCase(path);
-	stringToLower(type);
-	//HACK: MAC:
 	debugLog("forEachFile - path: " + path + " type: " + type);
 
 #if defined(BBGE_BUILD_UNIX)
@@ -927,6 +977,7 @@ int packFile(const std::string &sourcef, const std::string &destf, int level)
     return Z_OK;
 }
 
+#if 0
 /* Decompress from file source to file dest until stream ends or EOF.
    inf() returns Z_OK on success, Z_MEM_ERROR if memory could not be
    allocated for processing, Z_DATA_ERROR if the deflate data is
@@ -1000,6 +1051,7 @@ int unpackFile(const std::string &sourcef, const std::string &destf)
 
     return ret == Z_STREAM_END ? Z_OK : Z_DATA_ERROR;
 }
+#endif
 
 void openURL(const std::string &url)
 {
