@@ -83,6 +83,7 @@ void VFSHelper::Clear(void)
 
     for(ArchiveLoaderArray::iterator it = archLdrs.begin(); it != archLdrs.end(); ++it)
         delete *it;
+    archLdrs.clear();
 }
 
 void VFSHelper::_ClearMountPoints(void)
