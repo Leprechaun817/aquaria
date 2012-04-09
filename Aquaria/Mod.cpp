@@ -289,3 +289,29 @@ void Mod::update(float dt)
 		applyStart();
 	}
 }
+
+ModType Mod::getTypeFromXML(TiXmlElement *xml) // should be <AquariaMod>...</AquariaMod> - element
+{
+	if(xml)
+	{
+		TiXmlElement *prop = xml->FirstChildElement("Properties");
+		if(prop)
+		{
+			const char *type = prop->Attribute("type");
+			if(type)
+			{
+				if(!strcmp(type, "mod"))
+					return MODTYPE_MOD;
+				else if(!strcmp(type, "patch"))
+					return MODTYPE_PATCH;
+				else
+				{
+					std::ostringstream os;
+					os << "Unknown mod type '" << type << "' in XML, default to MODTYPE_MOD";
+					debugLog(os.str());
+				}
+			}
+		}
+	}
+	return MODTYPE_MOD; // the default
+}

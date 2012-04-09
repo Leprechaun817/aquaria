@@ -37,6 +37,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "RoundedRect.h"
 #include "TTFFont.h"
+#include "ModSelector.h"
 
 #ifdef BBGE_BUILD_OPENGL
 	#include <sys/stat.h>
@@ -193,7 +194,7 @@ DSQ::DSQ(std::string fileSystem) : Core(fileSystem, LR_MAX, APPNAME, PARTICLE_AM
 	subtext = 0;
 	subbox = 0;
 	menuSelectDelay = 0;
-	modSelector = 0;
+	modSelectorScr = 0;
 	blackout = 0;
 	useMic = false;
 	autoSingMenuOpen = false;
@@ -2103,9 +2104,18 @@ void loadModsCallback(const std::string &filename, intptr_t param)
 	std::string name = filename.substr(pos, pos2-pos);
 	ModEntry m;
 	m.path = name;
+	m.id = dsq->modEntries.size();
+
+	TiXmlDocument d;
+	Mod::loadModXML(&d, name);
+	m.type = Mod::getTypeFromXML(d.FirstChildElement("AquariaMod"));
+
 	dsq->modEntries.push_back(m);
 
-	debugLog("Loaded ModEntry [" + m.path + "]");
+	std::stringstream ss;
+	ss << "Loaded ModEntry [" << m.path << "] -> " << m.id << "  | type " << m.type;
+
+	dsq->debugLog(ss.str());
 }
 
 void DSQ::startSelectedMod()
@@ -2124,28 +2134,6 @@ void DSQ::startSelectedMod()
 		}
 		*/
 	}
-}
-
-void DSQ::selectNextMod()
-{
-	selectedMod ++;
-
-	if (selectedMod >= modEntries.size())
-		selectedMod = 0;
-
-	if (modSelector)
-		modSelector->refreshTexture();
-}
-
-void DSQ::selectPrevMod()
-{
-	selectedMod --;
-
-	if (selectedMod < 0)
-		selectedMod = modEntries.size()-1;
-
-	if (modSelector)
-		modSelector->refreshTexture();
 }
 
 ModEntry* DSQ::getSelectedModEntry()
@@ -2680,11 +2668,6 @@ void DSQ::doModSelect()
 	modIsSelected = false;
 
 	dsq->loadMods();
-	
-	selectedMod = user.data.lastSelectedMod;
-	
-	if (selectedMod >= modEntries.size() || selectedMod < 0)
-		selectedMod = 0;
 
 	createModSelector();
 
@@ -2698,7 +2681,6 @@ void DSQ::doModSelect()
 		
 	if (modIsSelected)
 	{
-		user.data.lastSelectedMod = selectedMod;
 		dsq->startSelectedMod();
 	}
 
@@ -2722,66 +2704,14 @@ void DSQ::createModSelector()
 	blackout->alpha.interpolateTo(1, 0.2);
 	addRenderObject(blackout, LR_MENU);
 
-	menu.resize(4);
-
-	menu[0] = new Quad("Cancel", Vector(750,580));
-	menu[0]->followCamera = 1;
-	addRenderObject(menu[0], LR_MENU);
-
-
-	AquariaMenuItem *a = new AquariaMenuItem();
-	//menu[0]->setLabel("Cancel");
-	a->useGlow("glow", 200, 50);
-	a->event.set(MakeFunctionEvent(DSQ,onExitSaveSlotMenu));
-	a->position = Vector(750, 580);
-	addRenderObject(a, LR_MENU);
-	menu[1] = a;
-	AquariaMenuItem *m1 = a;
-
-
-	a = new AquariaMenuItem();
-	a->useQuad("gui/arrow-left");
-	a->useGlow("glow", 100, 50);
-	a->useSound("Click");
-	a->event.set(MakeFunctionEvent(DSQ, selectPrevMod));
-	a->position = Vector(150, 300);
-	addRenderObject(a, LR_MENU);
-
-	menu[2] = a;
-
-	AquariaMenuItem *m2 = a;
-
-	a = new AquariaMenuItem();
-	a->useQuad("gui/arrow-right");
-	a->useGlow("glow", 100, 50);
-	a->useSound("Click");
-	a->event.set(MakeFunctionEvent(DSQ, selectNextMod));
-	a->position = Vector(650, 300);
-	addRenderObject(a, LR_MENU);
-
-	menu[3] = a;
-
-	AquariaMenuItem *m3 = a;
-
-	modSelector = new ModSelector();
-	modSelector->position = Vector(400,300);
-	modSelector->alpha = 0;
-	modSelector->alpha.interpolateTo(1, 0.4);
-	modSelector->followCamera = 1;
-	addRenderObject(modSelector, LR_MENU);
-
-	modSelector->setFocus(true);
-
-	m2->setDirMove(DIR_RIGHT, modSelector);
-	modSelector->setDirMove(DIR_RIGHT, m3);
-	modSelector->setDirMove(DIR_LEFT, m2);
-	m2->setDirMove(DIR_LEFT, modSelector);
-
-	modSelector->setDirMove(DIR_DOWN, m1);
-	m2->setDirMove(DIR_DOWN, m1);
-	m3->setDirMove(DIR_DOWN, m1);
-
-	m1->setDirMove(DIR_UP, modSelector);
+	modSelectorScr = new ModSelectorScreen();
+	modSelectorScr->position = Vector(400,300);
+	modSelectorScr->setWidth(getVirtualWidth()); // just to be sure
+	modSelectorScr->setHeight(getVirtualHeight());
+	modSelectorScr->autoWidth = AUTO_VIRTUALWIDTH;
+	modSelectorScr->autoHeight = AUTO_VIRTUALHEIGHT;
+	modSelectorScr->init();
+	addRenderObject(modSelectorScr, LR_MENU);
 }
 
 void DSQ::applyParallaxUserSettings()
@@ -2801,12 +2731,13 @@ void DSQ::clearModSelector()
 		blackout = 0;
 	}
 
-	if (modSelector)
+	if(modSelectorScr)
 	{
-		modSelector->setLife(1);
-		modSelector->setDecayRate(2);
-		modSelector->fadeAlphaWithLife = 1;
-		modSelector = 0;
+		modSelectorScr->close();
+		modSelectorScr->setLife(1);
+		modSelectorScr->setDecayRate(2);
+		modSelectorScr->fadeAlphaWithLife = 1;
+		modSelectorScr = 0;
 	}
 
 	clearMenu();

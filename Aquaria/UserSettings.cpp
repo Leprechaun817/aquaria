@@ -227,7 +227,6 @@ void UserSettings::save()
 		{
 			xml_data.SetAttribute("savePage",			data.savePage);
 			xml_data.SetAttribute("saveSlot",			data.saveSlot);
-			xml_data.SetAttribute("lastSelectedMod",	data.lastSelectedMod);
 		}
 		doc.InsertEndChild(xml_data);
 	}
@@ -482,7 +481,6 @@ void UserSettings::load(bool doApply, const std::string &overrideFile)
 	{
 		readIntAtt(xml_data, "savePage", &data.savePage);
 		readIntAtt(xml_data, "saveSlot", &data.saveSlot);
-		readIntAtt(xml_data, "lastSelectedMod", &data.lastSelectedMod);
 	}
 
 	//clearInputCodeMap();

@@ -229,17 +229,26 @@ protected:
 	bool vis, hidden;
 };
 
+enum ModType
+{
+	MODTYPE_MOD,
+	MODTYPE_PATCH,
+};
+
 struct ModEntry
 {
+	unsigned int id; // index in vector
+	ModType type;
 	std::string path;
 };
+
+class ModSelectorScreen;
 
 class Mod
 {
 public:
 	Mod();
 	void clear();
-	void loadModXML(TiXmlDocument *d, std::string modName);
 	void setActive(bool v);
 	void start();
 	void stop();
@@ -261,6 +270,10 @@ public:
 	
 	void shutdown();
 	bool isShuttingDown();
+
+	static void loadModXML(TiXmlDocument *d, std::string modName);
+	static ModType getTypeFromXML(TiXmlElement *xml);
+
 protected:
 	bool shuttingDown;
 	bool active;
@@ -273,18 +286,6 @@ protected:
 
 	std::string name;
 	std::string path;
-};
-
-class ModSelector : public AquariaGuiQuad
-{
-public:
-	ModSelector();
-	void refreshTexture();
-protected:
-	bool refreshing;
-	BitmapText *label;
-	void onUpdate(float dt);
-	bool mouseDown;
 };
 
 class AquariaScreenTransition : public ScreenTransition
@@ -1488,11 +1489,9 @@ public:
 
 	std::vector<ModEntry> modEntries;
 	int selectedMod;
-	ModSelector *modSelector;
+	ModSelectorScreen *modSelectorScr;
 
 	void startSelectedMod();
-	void selectNextMod();
-	void selectPrevMod();
 	ModEntry* getSelectedModEntry();
 
 #ifdef BBGE_BUILD_ACHIEVEMENTS_INTERNAL
