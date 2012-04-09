@@ -81,20 +81,20 @@ public:
         Set asSubdir to false to "unpack" the contents of the archive to the containing folder.
         Optionally, the target subdir to mount into can be specified. (See AddVFSDir().)
         Returns a pointer to the actual VFSDir object that represents the added archive, or NULL if failed.
-        It represents the original archive (as a directory) that is otherwise hidden in the `trees` array.
-        Note that this pointer will be different to the pointer returned by the the merged tree,
-        which is just a copy. */
-    VFSDir *AddArchive(const char *arch, bool asSubdir = true, const char *subdir = NULL);
+        The opaque pointer is passed directly to each loader and can contain additional parameters,
+        such as a password to open the file.
+        Read the comments in VFSArchiveLoader.h for an explanation how it works. If you have no idea, leave it NULL,
+        because it can easily cause a crash if not used carefully. */
+    VFSDir *AddArchive(const char *arch, bool asSubdir = true, const char *subdir = NULL, void *opaque = NULL);
 
     /** Add a loader that can look for files on demand.
-        It will be deleted if Prepare(true) is called.
         It is possible (but not a good idea) to add a loader multiple times. */
     void AddLoader(VFSLoader *ldr);
 
     /** Add an archive loader that can open archives of various types.
         Whenever an archive file is requested to be opened by AddArchive(),
         it is sent through each registered loader until one of them can recognize
-        the format and open it. A loader stays once registered. */
+        the format and open it. An archive loader stays once registered. */
     void AddArchiveLoader(VFSArchiveLoader *ldr);
     
     /** Get a file from the merged tree. Requires a previous call to Prepare().
@@ -127,7 +127,7 @@ public:
 
 protected:
 
-    /** Drops the merged tree and additional mount points and dynamic loaders.
+    /** Drops the merged tree and allows fully re-creating it.
         Overload to do additional cleanup if required. Invoked by Clear() and Prepare(true). */
     virtual void _cleanup(void);
 
@@ -158,7 +158,7 @@ protected:
     // by Prepare().
     DirArray trees;
 
-    // if files are not in the tree, maybe one of these is able to find it. May contain NULLs.
+    // If files are not in the tree, maybe one of these is able to find it.
     LoaderArray loaders;
 
     VFSDir *merged; // contains the merged virtual/actual file system tree

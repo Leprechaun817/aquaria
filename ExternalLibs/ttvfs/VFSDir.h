@@ -128,6 +128,8 @@ public:
     /** For debugging. Does never return NULL. */
     virtual const char *getType(void) const { return "VFSDir"; }
 
+    /** Can be overloaded if necessary. Called by VFSHelper::ClearGarbage() */
+    virtual void clearGarbage(void) {}
 
     /** Returns a file for this dir's subtree. Descends if necessary.
     Returns NULL if the file is not found. */

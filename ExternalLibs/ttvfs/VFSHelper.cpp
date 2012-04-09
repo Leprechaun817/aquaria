@@ -246,7 +246,7 @@ void VFSHelper::AddArchiveLoader(VFSArchiveLoader *ldr)
     archLdrs.push_back(ldr);
 }
 
-VFSDir *VFSHelper::AddArchive(const char *arch, bool asSubdir /* = true */, const char *subdir /* = NULL */)
+VFSDir *VFSHelper::AddArchive(const char *arch, bool asSubdir /* = true */, const char *subdir /* = NULL */, void *opaque /* = NULL */)
 {
     VFSFile *af = GetFile(arch);
     if(!af)
@@ -255,7 +255,7 @@ VFSDir *VFSHelper::AddArchive(const char *arch, bool asSubdir /* = true */, cons
     VFSDir *ad = NULL;
     VFSLoader *fileLdr = NULL;
     for(ArchiveLoaderArray::iterator it = archLdrs.begin(); it != archLdrs.end(); ++it)
-        if((ad = (*it)->Load(af, asSubdir, &fileLdr)))
+        if((ad = (*it)->Load(af, asSubdir, &fileLdr, opaque)))
             break;
     if(!ad)
         return NULL;
@@ -368,6 +368,8 @@ VFSDir *VFSHelper::GetDirRoot(void)
 
 void VFSHelper::ClearGarbage(void)
 {
+    for(DirArray::iterator it = trees.begin(); it != trees.end(); ++it)
+        (*it)->clearGarbage();
 }
 
 
