@@ -2096,7 +2096,7 @@ void DSQ::toggleMuffleSound(bool toggle)
 	*/
 }
 
-void loadModsCallback(const std::string &filename, intptr_t param)
+void DSQ::loadModsCallback(const std::string &filename, intptr_t param)
 {
 	//errorLog(filename);
 	int pos = filename.find_last_of('/')+1;
@@ -2112,10 +2112,21 @@ void loadModsCallback(const std::string &filename, intptr_t param)
 
 	dsq->modEntries.push_back(m);
 
-	std::stringstream ss;
+	std::ostringstream ss;
 	ss << "Loaded ModEntry [" << m.path << "] -> " << m.id << "  | type " << m.type;
 
 	dsq->debugLog(ss.str());
+}
+
+void DSQ::loadModPackagesCallback(const std::string &filename, intptr_t param)
+{
+	bool ok = dsq->mountModPackage(filename);
+
+	std::ostringstream ss;
+	ss << "Mount Mod Package '" << filename << "' : " << (ok ? "ok" : "FAIL");
+	dsq->debugLog(ss.str());
+
+	// they will be enumerated by the following loadModsCallback round
 }
 
 void DSQ::startSelectedMod()
@@ -2146,7 +2157,13 @@ ModEntry* DSQ::getSelectedModEntry()
 void DSQ::loadMods()
 {
 	modEntries.clear();
-	
+
+#ifdef BBGE_BUILD_VFS
+	// first load the packages, then enumerate XMLs
+	forEachFile(mod.getBaseModPath(), ".zip", loadModPackagesCallback, 0);
+	forEachFile(mod.getBaseModPath(), ".aqmod", loadModPackagesCallback, 0);
+#endif
+
 	forEachFile(mod.getBaseModPath(), ".xml", loadModsCallback, 0);
 	selectedMod = 0;
 }
@@ -2712,6 +2729,38 @@ void DSQ::createModSelector()
 	modSelectorScr->autoHeight = AUTO_VIRTUALHEIGHT;
 	modSelectorScr->init();
 	addRenderObject(modSelectorScr, LR_MENU);
+}
+
+bool DSQ::modIsKnown(const std::string& name)
+{
+	std::string nlower = name;
+	stringToLower(nlower);
+
+	for(int i = 0; i < modEntries.size(); ++i)
+	{
+		std::string elower = modEntries[i].path;
+		stringToLower(elower);
+		if(nlower == elower)
+			return true;
+	}
+	return false;
+}
+
+bool DSQ::mountModPackage(const std::string& pkg)
+{
+#ifdef BBGE_BUILD_VFS
+	ttvfs::VFSDir *vd = vfs.AddArchive(pkg.c_str(), false, mod.getBaseModPath().c_str());
+	if (!vd)
+	{
+		debugLog("Package: Unable to load " + pkg);
+		return false;
+	}
+	debugLog("Package: Mounted " + pkg + " as archive in _mods");
+	return true;
+#else
+	debugLog("Package: Can't mount " + pkg + ", VFS support disabled");
+	return false;
+#endif
 }
 
 void DSQ::applyParallaxUserSettings()
