@@ -9,7 +9,7 @@ class VFSZipArchiveLoader : public VFSArchiveLoader
 {
 public:
     virtual ~VFSZipArchiveLoader() {}
-    virtual VFSDir *Load(VFSFile *arch, bool asSubdir, VFSLoader **ldr, void *opaque = NULL);
+    virtual VFSDir *Load(VFSFile *arch, VFSLoader **ldr, void *opaque = NULL);
 };
 
 VFS_NAMESPACE_END

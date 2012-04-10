@@ -1490,8 +1490,13 @@ public:
 	Mod mod;
 
 	void loadMods();
+	void applyPatches();
+	void refreshResourcesForPatch(const std::string& name);
+	void applyPatch(const std::string& name);
+	void unapplyPatch(const std::string& name);
 
 	std::vector<ModEntry> modEntries;
+	std::set<std::string> activePatches;
 	int selectedMod;
 	ModSelectorScreen *modSelectorScr;
 

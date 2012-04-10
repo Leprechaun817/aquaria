@@ -367,8 +367,7 @@ void ModIcon::onClick()
 			break;
 		}
 
-		// TODO
-		/*case MODTYPE_PATCH:
+		case MODTYPE_PATCH:
 		{
 			std::set<std::string>::iterator it = dsq->activePatches.find(fname);
 			if(it != dsq->activePatches.end())
@@ -385,7 +384,7 @@ void ModIcon::onClick()
 			}
 			updateStatus();
 			break;
-		}*/
+		}
 
 		default:
 			errorLog("void ModIcon::onClick() -- unknown modType");

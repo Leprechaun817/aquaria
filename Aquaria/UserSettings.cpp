@@ -227,6 +227,11 @@ void UserSettings::save()
 		{
 			xml_data.SetAttribute("savePage",			data.savePage);
 			xml_data.SetAttribute("saveSlot",			data.saveSlot);
+
+			std::ostringstream ss;
+			for (std::set<std::string>::iterator it = dsq->activePatches.begin(); it != dsq->activePatches.end(); ++it)
+				ss << *it << " ";
+			xml_data.SetAttribute("activePatches",	ss.str());
 		}
 		doc.InsertEndChild(xml_data);
 	}
@@ -481,6 +486,18 @@ void UserSettings::load(bool doApply, const std::string &overrideFile)
 	{
 		readIntAtt(xml_data, "savePage", &data.savePage);
 		readIntAtt(xml_data, "saveSlot", &data.saveSlot);
+
+		if(const char *patchlist = xml_data->Attribute("activePatches"))
+		{
+			SimpleIStringStream ss(patchlist, SimpleIStringStream::REUSE);
+			std::string tmp;
+			while(ss)
+			{
+				ss >> tmp;
+				if(tmp.length())
+					dsq->activePatches.insert(tmp);
+			}
+		}
 	}
 
 	//clearInputCodeMap();

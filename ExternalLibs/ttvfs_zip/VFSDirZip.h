@@ -12,7 +12,7 @@ class VFSFile;
 class VFSDirZip : public VFSDir
 {
 public:
-    VFSDirZip(VFSFile *zf, bool asSubdir);
+    VFSDirZip(VFSFile *zf);
     virtual ~VFSDirZip();
     virtual unsigned int load(bool recusive);
     virtual VFSDir *createNew(const char *dir) const;

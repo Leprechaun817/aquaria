@@ -118,7 +118,7 @@ public:
     VFSDir(const char *fullpath);
     virtual ~VFSDir();
 
-    /** Enumerate directory with given path. Clears previously loaded entries.
+    /** Enumerate directory with given path. Keeps previously loaded entries.
         Returns the amount of files found. */
     virtual unsigned int load(bool recursive);
 
@@ -148,6 +148,8 @@ public:
     /** Like add(), but if the file name contains a path, descend the tree to the target dir.
         Not-existing subdirs are created on the way. */
     bool addRecursive(VFSFile *f, bool overwrite = true);
+
+    void clearFiles(bool recursive);
 
     /* For internal use */
     bool insert(VFSDir *subdir, bool overwrite = true);

@@ -92,6 +92,8 @@ bool VFSDir::merge(VFSDir *dir, bool overwrite /* = true */)
 {
     if(!dir)
         return false;
+	if(dir == this)
+		return true; // nothing to do then
 
     bool result = false;
     VFS_GUARD_OPT(this);
@@ -270,6 +272,18 @@ VFSDir *VFSDir::getDir(const char *subdir, bool forceCreate /* = false */)
     return ret;
 }
 
+void VFSDir::clearFiles(bool recursive)
+{
+	// FIXME: this should be done using a non-recursive stack/set implementation for safety
+	if(recursive)
+		for(DirIter it = _subdirs.begin(); it != _subdirs.end(); ++it)
+			it->second->clearFiles(true);
+
+	for(FileIter it = _files.begin(); it != _files.end(); ++it)
+		it->second->ref--;
+	_files.clear();
+}
+
 
 
 // ----- VFSDirReal start here -----
@@ -321,7 +335,7 @@ unsigned int VFSDirReal::load(bool recursive)
             ++sum;
 
             cpd[oldd->name()] = oldd;
-            break;
+            continue;
         }
 
         // TODO: use stack alloc

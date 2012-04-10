@@ -1091,37 +1091,7 @@ This build is not yet final, and as such there are a couple things lacking. They
 
 	user.apply();
 
-	/*
-
-	sound->loadLocalSound("bbfloppy");
-
-	Quad *disk = new Quad("bitblot/disk", Vector(400, 300));
-	disk->alpha = 0;
-	disk->alpha.interpolateTo(1, 0.5);
-	disk->scale = Vector(0.6, 0.6);
-	addRenderObject(disk, LR_HUD);
-
-	debugLog("core->main");
-	core->main(0.5);
-	debugLog("end of core->main");
-
-	disk->position.interpolateTo(Vector(400,560), 0.5);
-	
-	core->main(0.4);
-
-	sound->playSfx("bbfloppy");
-
-	core->main(0.1);
-
-	*/
-	
-
-	/*
-	loading = new Quad("loading", Vector(400,300));
-	loading->followCamera = 1;
-	loading->alpha = 0.01;
-	addRenderObject(loading, LR_HUD);
-	*/
+	applyPatches();
 
 	loading = new Quad("loading/juice", Vector(400,300));
 	loading->alpha = 1.0;
@@ -2166,6 +2136,104 @@ void DSQ::loadMods()
 
 	forEachFile(mod.getBaseModPath(), ".xml", loadModsCallback, 0);
 	selectedMod = 0;
+}
+
+void DSQ::applyPatches()
+{
+#ifndef AQUARIA_DEMO
+
+	//#ifdef BBGE_BUILD_MACOSX
+	// HACK: This should be in Core::setupVFS() !! (but dsq is unknown there)
+	// This is to correctly place the override files from _hackfixes.lvpa, which are in this dir always 
+	vfs.Mount("_mods", mod.getBaseModPath().c_str(), true);
+	//#endif
+
+	// user wants mods, but not yet loaded
+	if(activePatches.size() && modEntries.empty())
+		loadMods();
+
+	// FG: FIXME: its a std::set, optimize access!!
+	for (std::set<std::string>::iterator it = activePatches.begin(); it != activePatches.end(); ++it)
+		for(int i = 0; i < modEntries.size(); ++i)
+			if(modEntries[i].type == MODTYPE_PATCH)
+				if(!nocasecmp(modEntries[i].path.c_str(), it->c_str()))
+					applyPatch(modEntries[i].path);
+#endif
+}
+
+// this thing is rather heuristic... but works for normal mod paths
+// there is apparently nothing else except Textures that is a subclass of Resource,
+// thus directly using "gfx" subdir should be fine...
+void DSQ::refreshResourcesForPatch(const std::string& name)
+{
+#ifdef BBGE_BUILD_VFS
+	ttvfs::VFSDir *vd = vfs.GetDir((mod.getBaseModPath() + name + "/gfx").c_str()); // only textures are resources, anyways
+	if(!vd)
+		return;
+
+	std::list<ttvfs::VFSDir*> left;
+	std::set<std::string> files;
+	left.push_back(vd);
+
+	do
+	{
+		vd = left.front();
+		left.pop_front();
+		for(ttvfs::DirIter it = vd->_subdirs.begin(); it != vd->_subdirs.end(); ++it)
+			left.push_back(it->second);
+
+		// texture names are like: "naija/naija2-frontleg3" - no .png extension, and no gfx/ path
+		for(ttvfs::FileIter it = vd->_files.begin(); it != vd->_files.end(); ++it)
+		{
+			std::string t = it->second->fullname();
+			size_t dotpos = t.rfind('.');
+			size_t pathstart = t.find("gfx/");
+			if(dotpos == std::string::npos || pathstart == std::string::npos || dotpos < pathstart)
+				continue; // whoops
+
+			//std::string dbg = t.substr(pathstart + 4, dotpos - (pathstart + 4));
+			files.insert(t.substr(pathstart + 4, dotpos - (pathstart + 4)));
+		}
+	}
+	while(left.size());
+
+	std::ostringstream os;
+	os << "refreshResourcesForPatch - " << files.size() << " to refresh";
+	debugLog(os.str());
+
+	for(int i = 0; i < dsq->resources.size(); ++i)
+	{
+		Resource *r = dsq->resources[i];
+		if(files.find(r->name) != files.end())
+			r->reload();
+	}
+#endif
+}
+
+void DSQ::applyPatch(const std::string& name)
+{
+#ifdef AQUARIA_DEMO
+	return;
+#endif
+
+	std::string src = mod.getBaseModPath();
+	src += name;
+	debugLog("Apply patch: " + src);
+	vfs.Mount(src.c_str(), "", true);
+
+	activePatches.insert(name);
+	refreshResourcesForPatch(name);
+}
+
+void DSQ::unapplyPatch(const std::string& name)
+{
+	std::string src = mod.getBaseModPath();
+	src += name;
+	debugLog("Unapply patch: " + src);
+	vfs.Unmount(src.c_str(), "");
+
+	activePatches.erase(name);
+	refreshResourcesForPatch(name);
 }
 
 void DSQ::playMenuSelectSfx()

@@ -42,8 +42,8 @@ static bool zip_reader_init_vfsfile(mz_zip_archive *pZip, VFSFile *vf, mz_uint32
 }
 
 
-VFSDirZip::VFSDirZip(VFSFile *zf, bool asSubdir)
-: VFSDir(asSubdir ? zf->fullname() : StripLastPath(zf->fullname()).c_str()), _zf(zf), _isOpen(false)
+VFSDirZip::VFSDirZip(VFSFile *zf)
+: VFSDir(zf->fullname()), _zf(zf), _isOpen(false)
 {
     _zf->ref++;
 }

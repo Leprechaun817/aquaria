@@ -121,32 +121,49 @@ bool VFSHelper::LoadFileSysRoot(bool recursive)
     loaders.push_back(new VFSLoaderDisk);
     trees.push_back(filesysRoot);
 
+    AddVFSDir(filesysRoot, "");
+
     return true;
 }
 
+// TODO: deprecate this
 void VFSHelper::Prepare(bool clear /* = true */)
 {
     VFS_GUARD_OPT(this);
-    if(clear)
-        _cleanup();
-    if(!merged)
-        merged = new VFSDir("");
+
+	Reload(false, clear, false); // HACK
     
-    for(DirArray::iterator it = trees.begin(); it != trees.end(); ++it)
-        merged->merge(*it);
+    //for(DirArray::iterator it = trees.begin(); it != trees.end(); ++it)
+    //    merged->getDir((*it)->fullname(), true)->merge(*it);
 }
 
 void VFSHelper::Reload(bool fromDisk /* = false */, bool clear /* = false */, bool clearMountPoints /* = false */)
 {
     VFS_GUARD_OPT(this);
+    if(clearMountPoints)
+        _ClearMountPoints();
     if(fromDisk && filesysRoot)
         LoadFileSysRoot(true);
-    Prepare(clear);
-    for(VFSMountList::iterator it = vlist.begin(); it != vlist.end(); ++it)
-    {
-        //printf("VFS: mount {%s} [%s] -> [%s] (overwrite: %d)\n", it->vdir->getType(), it->vdir->fullname(), it->mountPoint.c_str(), it->overwrite);
-        GetDir(it->mountPoint.c_str(), true)->merge(it->vdir, it->overwrite);
-    }
+	if(clear)
+		_cleanup();
+	if(!merged && trees.size())
+	{
+		// FIXME: not sure if really correct
+		merged = trees[0];
+		merged->ref++;
+
+		// FIXME: this is too hogging
+		merged->clearFiles(true);
+		merged->load(true);
+	}
+	if(merged)
+	{
+		for(VFSMountList::iterator it = vlist.begin(); it != vlist.end(); ++it)
+		{
+			//printf("VFS: mount {%s} [%s] -> [%s] (overwrite: %d)\n", it->vdir->getType(), it->vdir->fullname(), it->mountPoint.c_str(), it->overwrite);
+			GetDir(it->mountPoint.c_str(), true)->merge(it->vdir, it->overwrite);
+		}
+	}
 }
 
 bool VFSHelper::Mount(const char *src, const char *dest, bool overwrite /* = true*/)
@@ -162,12 +179,15 @@ bool VFSHelper::AddVFSDir(VFSDir *dir, const char *subdir /* = NULL */, bool ove
     VFS_GUARD_OPT(this);
     if(!subdir)
         subdir = dir->fullname();
+
+    VDirEntry ve(dir, subdir, overwrite);
+    _StoreMountPoint(ve);
+
     VFSDir *sd = GetDir(subdir, true);
     if(!sd) // may be NULL if Prepare() was not called before
         return false;
-    VDirEntry ve(dir, subdir, overwrite);
-    _StoreMountPoint(ve);
     sd->merge(dir, overwrite); // merge into specified subdir. will be (virtually) created if not existing
+
     return true;
 }
 
@@ -181,7 +201,13 @@ bool VFSHelper::Unmount(const char *src, const char *dest)
     if(!_RemoveMountPoint(ve))
         return false;
 
-    Reload(false);
+	// FIXME: this could be done more efficiently by just reloading parts of the tree that were involved.
+    Reload(false, true, false);
+    //vd->load(true);
+	//vd->load(false);
+	/*VFSDir *dstdir = GetDir(dest, false);
+	if(dstdir)
+		dstdir->load(false);*/
     return true;
 }
 
@@ -255,7 +281,7 @@ VFSDir *VFSHelper::AddArchive(const char *arch, bool asSubdir /* = true */, cons
     VFSDir *ad = NULL;
     VFSLoader *fileLdr = NULL;
     for(ArchiveLoaderArray::iterator it = archLdrs.begin(); it != archLdrs.end(); ++it)
-        if((ad = (*it)->Load(af, asSubdir, &fileLdr, opaque)))
+        if((ad = (*it)->Load(af, &fileLdr, opaque)))
             break;
     if(!ad)
         return NULL;

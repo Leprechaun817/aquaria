@@ -4,9 +4,9 @@
 
 VFS_NAMESPACE_START
 
-VFSDir *VFSZipArchiveLoader::Load(VFSFile *arch, bool asSubdir, VFSLoader ** /*unused*/, void * /*unused*/)
+VFSDir *VFSZipArchiveLoader::Load(VFSFile *arch, VFSLoader ** /*unused*/, void * /*unused*/)
 {
-    VFSDirZip *vd = new VFSDirZip(arch, asSubdir);
+    VFSDirZip *vd = new VFSDirZip(arch);
     if(vd->load(true))
         return vd;
 

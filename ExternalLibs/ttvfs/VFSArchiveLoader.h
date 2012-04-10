@@ -29,7 +29,7 @@ class VFSArchiveLoader
 public:
     virtual ~VFSArchiveLoader() {}
 
-    virtual VFSDir *Load(VFSFile *arch, bool asSubdir, VFSLoader **ldr, void *opaque = NULL) = 0;
+    virtual VFSDir *Load(VFSFile *arch, VFSLoader **ldr, void *opaque = NULL) = 0;
 };
 
 /* A possible struct for 'opaque' would be:
