@@ -144,26 +144,28 @@ void VFSHelper::Reload(bool fromDisk /* = false */, bool clear /* = false */, bo
         _ClearMountPoints();
     if(fromDisk && filesysRoot)
         LoadFileSysRoot(true);
-	if(clear)
-		_cleanup();
-	if(!merged && trees.size())
-	{
-		// FIXME: not sure if really correct
-		merged = trees[0];
-		merged->ref++;
+    if(clear)
+        _cleanup();
+    if(!merged && trees.size())
+    {
+        for(DirArray::iterator it = trees.begin(); it != trees.end(); ++it)
+            (*it)->clearMounted();
 
-		// FIXME: this is too hogging
-		merged->clearFiles(true);
-		merged->load(true);
-	}
-	if(merged)
-	{
-		for(VFSMountList::iterator it = vlist.begin(); it != vlist.end(); ++it)
-		{
-			//printf("VFS: mount {%s} [%s] -> [%s] (overwrite: %d)\n", it->vdir->getType(), it->vdir->fullname(), it->mountPoint.c_str(), it->overwrite);
-			GetDir(it->mountPoint.c_str(), true)->merge(it->vdir, it->overwrite);
-		}
-	}
+        // FIXME: not sure if really correct
+        merged = trees[0];
+        merged->ref++;
+
+        // FIXME: this is too hogging
+        //merged->load(true);
+    }
+    if(merged)
+    {
+        for(VFSMountList::iterator it = vlist.begin(); it != vlist.end(); ++it)
+        {
+            //printf("VFS: mount {%s} [%s] -> [%s] (overwrite: %d)\n", it->vdir->getType(), it->vdir->fullname(), it->mountPoint.c_str(), it->overwrite);
+            GetDir(it->mountPoint.c_str(), true)->merge(it->vdir, it->overwrite, VFSDir::MOUNTED);
+        }
+    }
 }
 
 bool VFSHelper::Mount(const char *src, const char *dest, bool overwrite /* = true*/)
@@ -186,7 +188,7 @@ bool VFSHelper::AddVFSDir(VFSDir *dir, const char *subdir /* = NULL */, bool ove
     VFSDir *sd = GetDir(subdir, true);
     if(!sd) // may be NULL if Prepare() was not called before
         return false;
-    sd->merge(dir, overwrite); // merge into specified subdir. will be (virtually) created if not existing
+    sd->merge(dir, overwrite, VFSDir::MOUNTED); // merge into specified subdir. will be (virtually) created if not existing
 
     return true;
 }
@@ -304,7 +306,7 @@ inline static VFSFile *VFSHelper_GetFileByLoader(VFSLoader *ldr, const char *fn,
     if(vf)
     {
         VFS_GUARD_OPT(vf);
-        root->addRecursive(vf, true);
+        root->addRecursive(vf, true, VFSDir::NONE);
         --(vf->ref);
     }
     return vf;
@@ -349,7 +351,7 @@ inline static VFSDir *VFSHelper_GetDirByLoader(VFSLoader *ldr, const char *fn, c
 
         VFS_GUARD_OPT(this);
         VFSDir *parent = parentname.empty() ? root : root->getDir(parentname.c_str(), true);
-        parent->insert(vd, true);
+        parent->insert(vd, true, VFSDir::NONE);
         --(vd->ref); // should delete it
 
         vd = root->getDir(fn); // can't return vd directly because it is cloned on insert+merge, and already deleted here
@@ -402,7 +404,7 @@ void VFSHelper::ClearGarbage(void)
 // DEBUG STUFF
 
 static void _DumpTreeRecursive(std::ostream& os, VFSDir *vd, const std::string& sp, VFSDir *parent)
-{
+{/*
     std::string sub = sp + "  ";
 
     os << sp << "d|" << vd->name() << " [" << vd->getType() << ", ref " << vd->ref.count() << ", 0x" << vd << "]";
@@ -433,7 +435,7 @@ static void _DumpTreeRecursive(std::ostream& os, VFSDir *vd, const std::string& 
         }
         if(p)
             os << std::endl;
-    }
+    }*/
 }
 
 void VFSHelper::debugDumpTree(std::ostream& os, VFSDir *start /* = NULL */)

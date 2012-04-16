@@ -94,24 +94,45 @@ struct charptr_hash
 class VFSDir;
 class VFSFile;
 
+typedef void (*FileEnumCallback)(VFSFile *vf, void *user);
+typedef void (*DirEnumCallback)(VFSDir *vd, void *user);
+
+
 class VFSDir : public VFSBase
 {
 public:
+
+    // bitmask
+    enum EntryFlags
+    {
+        NONE = 0,
+        MOUNTED = 1
+    };
+
+    template<typename T> struct MapEntry
+    {
+        MapEntry() {}
+        MapEntry(T *p, EntryFlags flg = NONE) : ptr(p), flags(flg) {}
+        inline bool isMounted() { return flags & MOUNTED; }
+
+        T *ptr;
+        EntryFlags flags;
+    };
 
     // Avoid using std::string as key.
     // The file names are known to remain constant during each object's lifetime,
     // so just keep the pointers and use an appropriate comparator function.
 #ifdef VFS_USE_HASHMAP
         // VFS_IGNORE_CASE already handled in hash generation
-        typedef HashMap<const char *, VFSDir*, charptr_hash, hashmap_eq> Dirs;
-        typedef HashMap<const char *, VFSFile*, charptr_hash, hashmap_eq> Files;
+        typedef HashMap<const char *, MapEntry<VFSDir>, charptr_hash, hashmap_eq> Dirs;
+        typedef HashMap<const char *, MapEntry<VFSFile>, charptr_hash, hashmap_eq> Files;
 #else
 #  ifdef VFS_IGNORE_CASE
-        typedef std::map<const char *, VFSDir*, ci_less> Dirs;
-        typedef std::map<const char *, VFSFile*, ci_less> Files;
+        typedef std::map<const char *, MapEntry<VFSDir>, ci_less> Dirs;
+        typedef std::map<const char *, MapEntry<VFSFile>, ci_less> Files;
 #  else
-        typedef std::map<const char *, VFSDir*, cs_less> Dirs;
-        typedef std::map<const char *, VFSFile*, cs_less> Files;
+        typedef std::map<const char *, MapEntry<VFSDir>, cs_less> Dirs;
+        typedef std::map<const char *, MapEntry<VFSFile>, cs_less> Files;
 #  endif
 #endif
 
@@ -140,23 +161,30 @@ public:
     subdir. Otherwise return NULL if not found. */
     VFSDir *getDir(const char *subdir, bool forceCreate = false);
 
+
+
+    void clearMounted();
+
+    void forEachFile(FileEnumCallback f, void *user = NULL, bool safe = false);
+    void forEachDir(DirEnumCallback f, void *user = NULL, bool safe = false);
+
+
+    /* Below is for internal use -- take care if using these externally! */
+    bool insert(VFSDir *subdir, bool overwrite, EntryFlags flag);
+    bool merge(VFSDir *dir, bool overwrite, EntryFlags flag);
+
     /** Adds a file directly to this directory, allows any name.
     If another file with this name already exists, optionally drop the old one out.
     Returns whether the file was actually added. */
-    bool add(VFSFile *f, bool overwrite = true);
+    bool add(VFSFile *f, bool overwrite, EntryFlags flag);
 
     /** Like add(), but if the file name contains a path, descend the tree to the target dir.
         Not-existing subdirs are created on the way. */
-    bool addRecursive(VFSFile *f, bool overwrite = true);
+    bool addRecursive(VFSFile *f, bool overwrite, EntryFlags flag);
 
-    void clearFiles(bool recursive);
-
-    /* For internal use */
-    bool insert(VFSDir *subdir, bool overwrite = true);
-    bool merge(VFSDir *dir, bool overwrite = true);
+protected:
 
     // std::map<const char*,X> or ttvfs::HashMap<const char*, X> stores for files and subdirs.
-    // Intentionally accessible from outside for easier traversing.
     Files _files;
     Dirs _subdirs;
 };

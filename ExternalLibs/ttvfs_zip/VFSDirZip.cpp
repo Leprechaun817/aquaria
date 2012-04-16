@@ -88,7 +88,7 @@ unsigned int VFSDirZip::load(bool /*ignored*/)
         VFSFileZip *vf = new VFSFileZip(&_zip);
         memcpy(vf->getZipFileStat(), &fs, sizeof(mz_zip_archive_file_stat));
         vf->_init();
-        addRecursive(vf, true);
+        addRecursive(vf, true, VFSDir::NONE);
         vf->ref--;
     }
 
