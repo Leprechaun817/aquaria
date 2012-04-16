@@ -169,6 +169,26 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath="..\..\ExternalLibs\ByteBuffer.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\ExternalLibs\DeflateCompressor.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\ExternalLibs\DeflateCompressor.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\ExternalLibs\FileAPI.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\ExternalLibs\FileAPI.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\ExternalLibs\tinyxml.cpp"
 				>
 			</File>
@@ -805,6 +825,42 @@
 				</File>
 			</Filter>
 			<Filter
+				Name="LVPA"
+				>
+				<File
+					RelativePath="..\..\ExternalLibs\lvpa\ByteBuffer.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\lvpa\ByteConverter.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\lvpa\LVPACommon.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\lvpa\LVPACompileConfig.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\lvpa\LVPAInternal.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="glfont2"
+				>
+				<File
+					RelativePath="..\..\ExternalLibs\glfont2\glfont2.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\glfont2\glfont2.h"
+					>
+				</File>
+			</Filter>
+			<Filter
 				Name="lua"
 				>
 				<File
@@ -1021,38 +1077,130 @@
 				</File>
 			</Filter>
 			<Filter
-				Name="LVPA"
+				Name="ttvfs"
 				>
 				<File
-					RelativePath="..\..\ExternalLibs\lvpa\ByteBuffer.h"
+					RelativePath="..\..\ExternalLibs\ttvfs\VFS.h"
 					>
 				</File>
 				<File
-					RelativePath="..\..\ExternalLibs\lvpa\ByteConverter.h"
+					RelativePath="..\..\ExternalLibs\ttvfs\VFSArchiveLoader.h"
 					>
 				</File>
 				<File
-					RelativePath="..\..\ExternalLibs\lvpa\LVPACommon.h"
+					RelativePath="..\..\ExternalLibs\ttvfs\VFSAtomic.cpp"
 					>
 				</File>
 				<File
-					RelativePath="..\..\ExternalLibs\lvpa\LVPACompileConfig.h"
+					RelativePath="..\..\ExternalLibs\ttvfs\VFSAtomic.h"
 					>
 				</File>
 				<File
-					RelativePath="..\..\ExternalLibs\lvpa\LVPAInternal.h"
+					RelativePath="..\..\ExternalLibs\ttvfs\VFSBase.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\ttvfs\VFSBase.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\ttvfs\VFSDefines.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\ttvfs\VFSDir.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\ttvfs\VFSDir.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\ttvfs\VFSFile.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\ttvfs\VFSFile.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\ttvfs\VFSFileFuncs.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\ttvfs\VFSFileFuncs.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\ttvfs\VFSHashmap.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\ttvfs\VFSHelper.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\ttvfs\VFSHelper.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\ttvfs\VFSInternal.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\ttvfs\VFSLoader.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\ttvfs\VFSLoader.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\ttvfs\VFSSelfRefCounter.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\ttvfs\VFSTools.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\ttvfs\VFSTools.h"
 					>
 				</File>
 			</Filter>
 			<Filter
-				Name="glfont2"
+				Name="ttvfs_zip"
 				>
 				<File
-					RelativePath="..\..\ExternalLibs\glfont2\glfont2.cpp"
+					RelativePath="..\..\ExternalLibs\ttvfs_zip\miniz.c"
 					>
 				</File>
 				<File
-					RelativePath="..\..\ExternalLibs\glfont2\glfont2.h"
+					RelativePath="..\..\ExternalLibs\ttvfs_zip\miniz.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\ttvfs_zip\VFSDirZip.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\ttvfs_zip\VFSDirZip.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\ttvfs_zip\VFSFileZip.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\ttvfs_zip\VFSFileZip.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\ttvfs_zip\VFSZipArchiveLoader.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\ttvfs_zip\VFSZipArchiveLoader.h"
 					>
 				</File>
 			</Filter>
