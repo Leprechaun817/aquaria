@@ -567,14 +567,33 @@ std::string stripEndlineForUnix(const std::string &in)
 }
 
 #ifdef BBGE_BUILD_VFS
-static void incref_all(const std::pair<std::string, ttvfs::VFSFile*>& p) { ++(p.second->ref); }
-static void decref_all(const std::pair<std::string, ttvfs::VFSFile*>& p) { --(p.second->ref); }
+
+struct vfscallback_s
+{
+    std::string *path;
+    const char *ext;
+    intptr_t param;
+    void (*callback)(const std::string &filename, intptr_t param);
+};
+
+void forEachFile_vfscallback(VFILE *vf, void *user)
+{
+    vfscallback_s *d = (vfscallback_s*)user;
+    if(d->ext)
+    {
+        const char *e = strrchr(vf->name(), '.');
+        if(e && nocasecmp(d->ext, e))
+            return;
+    }
+    d->callback(*(d->path) + vf->name(), d->param);
+}
+
 #endif
 
 void forEachFile(std::string path, std::string type, void callback(const std::string &filename, intptr_t param), intptr_t param)
 {
 	if (path.empty()) return;
-	stringToLower(type);
+
 
 #ifdef BBGE_BUILD_VFS
 	ttvfs::VFSDir *vd = vfs.GetDir(path.c_str(), true); // add to tree if it wasn't loaded before
@@ -584,30 +603,18 @@ void forEachFile(std::string path, std::string type, void callback(const std::st
 		return;
 	}
 	vd->load(false); // FIXME: need to reload when enumerating files?
-
-	ttvfs::VFSDir::Files fileset = vd->_files; // make a copy, this is intentional in case the callback modifies the tree
-	std::for_each(fileset.begin(), fileset.end(), incref_all); // and because we are storing these now, do correct ref counting
-
-	for(ttvfs::FileIter it = fileset.begin(); it != fileset.end(); ++it)
-	{
-		const ttvfs::VFSFile *f = it->second;
-		const char *e = strrchr(f->name(), '.');
-		if (e)
-		{
-			std::string exs(e);
-			stringToLower(exs);
-			if(exs != type)
-				continue;
-		}
-
-		callback(path + f->name(), param);
-	}
-	std::for_each(fileset.begin(), fileset.end(), decref_all);
+	vfscallback_s dat;
+	dat.path = &path;
+	dat.ext = type.length() ? type.c_str() : NULL;
+	dat.param = param;
+	dat.callback = callback;
+	vd->forEachFile(forEachFile_vfscallback, &dat, true);
 
 	return;
 	// -------------------------------------
 #endif
 
+	stringToLower(type);
 	path = core->adjustFilenameCase(path);
 	debugLog("forEachFile - path: " + path + " type: " + type);
 

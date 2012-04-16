@@ -18,6 +18,7 @@ VFILE *vfopen(const char *fn, const char *mode)
 	VFILE *vf = vfs.GetFile(fn);
 	if (!vf || !vf->open(mode))
 		return NULL;
+	++(vf->ref); // keep the file alive until closed.
 	return vf;
 }
 
@@ -28,7 +29,9 @@ size_t vfread(void *ptr, size_t size, size_t count, VFILE *vf)
 
 int vfclose(VFILE *vf)
 {
-	return vf->close();
+	bool closed = vf->close();
+	vf->ref--;
+	return closed ? 0 : EOF;
 }
 
 size_t vfwrite(const void *ptr, size_t size, size_t count, VFILE *vf)

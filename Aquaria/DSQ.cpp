@@ -2161,12 +2161,35 @@ void DSQ::applyPatches()
 #endif
 }
 
+
+#ifdef BBGE_BUILD_VFS
+
+static void refr_pushback(ttvfs::VFSDir *vd, void *user)
+{
+    std::list<ttvfs::VFSDir*> *li = (std::list<ttvfs::VFSDir*>*)user;
+    li->push_back(vd);
+}
+
+static void refr_insert(VFILE *vf, void *user)
+{
+    // texture names are like: "naija/naija2-frontleg3" - no .png extension, and no gfx/ path
+    std::set<std::string>*files = (std::set<std::string>*)user;
+    std::string t = vf->fullname();
+    size_t dotpos = t.rfind('.');
+    size_t pathstart = t.find("gfx/");
+    if(dotpos == std::string::npos || pathstart == std::string::npos || dotpos < pathstart)
+        return; // whoops
+
+    //std::string dbg = t.substr(pathstart + 4, dotpos - (pathstart + 4));
+    files->insert(t.substr(pathstart + 4, dotpos - (pathstart + 4)));
+}
+
+
 // this thing is rather heuristic... but works for normal mod paths
 // there is apparently nothing else except Textures that is a subclass of Resource,
 // thus directly using "gfx" subdir should be fine...
 void DSQ::refreshResourcesForPatch(const std::string& name)
 {
-#ifdef BBGE_BUILD_VFS
 	ttvfs::VFSDir *vd = vfs.GetDir((mod.getBaseModPath() + name + "/gfx").c_str()); // only textures are resources, anyways
 	if(!vd)
 		return;
@@ -2179,21 +2202,8 @@ void DSQ::refreshResourcesForPatch(const std::string& name)
 	{
 		vd = left.front();
 		left.pop_front();
-		for(ttvfs::DirIter it = vd->_subdirs.begin(); it != vd->_subdirs.end(); ++it)
-			left.push_back(it->second);
-
-		// texture names are like: "naija/naija2-frontleg3" - no .png extension, and no gfx/ path
-		for(ttvfs::FileIter it = vd->_files.begin(); it != vd->_files.end(); ++it)
-		{
-			std::string t = it->second->fullname();
-			size_t dotpos = t.rfind('.');
-			size_t pathstart = t.find("gfx/");
-			if(dotpos == std::string::npos || pathstart == std::string::npos || dotpos < pathstart)
-				continue; // whoops
-
-			//std::string dbg = t.substr(pathstart + 4, dotpos - (pathstart + 4));
-			files.insert(t.substr(pathstart + 4, dotpos - (pathstart + 4)));
-		}
+		vd->forEachDir(refr_pushback, &left);
+		vd->forEachFile(refr_insert, &files);
 	}
 	while(left.size());
 
@@ -2207,8 +2217,10 @@ void DSQ::refreshResourcesForPatch(const std::string& name)
 		if(files.find(r->name) != files.end())
 			r->reload();
 	}
-#endif
 }
+#else
+void DSQ::refreshResourcesForPatch(const std::string& name) {}
+#endif
 
 void DSQ::applyPatch(const std::string& name)
 {
