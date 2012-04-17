@@ -439,11 +439,9 @@ void ModIcon::loadEntry(const ModEntry& entry)
 
 void ModIcon::updateStatus()
 {
-	// TODO
-	/*if(modType == MODTYPE_PATCH)
+	if(modType == MODTYPE_PATCH)
 	{
-		std::set<std::string>::iterator it = dsq->activePatches.find(fname);
-		if(it != dsq->activePatches.end())
+		if(dsq->isPatchActive(fname))
 		{
 			// enabled
 			color.interpolateTo(Vector(1,1,1), 0.1f);
@@ -458,7 +456,7 @@ void ModIcon::updateStatus()
 			scaleNormal = Vector(0.8f,0.8f);
 		}
 		scaleBig = scaleNormal * 1.1f;
-	}*/
+	}
 }
 
 MenuBasicBar::MenuBasicBar() : AquariaGuiQuad()

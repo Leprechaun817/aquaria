@@ -1494,6 +1494,7 @@ public:
 	void refreshResourcesForPatch(const std::string& name);
 	void applyPatch(const std::string& name);
 	void unapplyPatch(const std::string& name);
+	bool isPatchActive(const std::string& name) { return activePatches.find(name) != activePatches.end(); }
 
 	std::vector<ModEntry> modEntries;
 	std::set<std::string> activePatches;
