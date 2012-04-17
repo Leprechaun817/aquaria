@@ -362,6 +362,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\Aquaria\Network.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Aquaria\Network.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\Aquaria\ParticleEditor.cpp"
 				>
 			</File>

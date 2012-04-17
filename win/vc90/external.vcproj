@@ -189,6 +189,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\ExternalLibs\minihttp.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\ExternalLibs\minihttp.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\ExternalLibs\tinyxml.cpp"
 				>
 			</File>
@@ -825,30 +833,6 @@
 				</File>
 			</Filter>
 			<Filter
-				Name="LVPA"
-				>
-				<File
-					RelativePath="..\..\ExternalLibs\lvpa\ByteBuffer.h"
-					>
-				</File>
-				<File
-					RelativePath="..\..\ExternalLibs\lvpa\ByteConverter.h"
-					>
-				</File>
-				<File
-					RelativePath="..\..\ExternalLibs\lvpa\LVPACommon.h"
-					>
-				</File>
-				<File
-					RelativePath="..\..\ExternalLibs\lvpa\LVPACompileConfig.h"
-					>
-				</File>
-				<File
-					RelativePath="..\..\ExternalLibs\lvpa\LVPAInternal.h"
-					>
-				</File>
-			</Filter>
-			<Filter
 				Name="glfont2"
 				>
 				<File
@@ -1201,6 +1185,30 @@
 				</File>
 				<File
 					RelativePath="..\..\ExternalLibs\ttvfs_zip\VFSZipArchiveLoader.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="LVPA"
+				>
+				<File
+					RelativePath="..\..\ExternalLibs\lvpa\ByteBuffer.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\lvpa\ByteConverter.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\lvpa\LVPACommon.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\lvpa\LVPACompileConfig.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ExternalLibs\lvpa\LVPAInternal.h"
 					>
 				</File>
 			</Filter>
