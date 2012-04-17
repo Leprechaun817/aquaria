@@ -38,6 +38,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "RoundedRect.h"
 #include "TTFFont.h"
 #include "ModSelector.h"
+#include "Network.h"
 
 #ifdef BBGE_BUILD_OPENGL
 	#include <sys/stat.h>
@@ -2309,6 +2310,8 @@ void DSQ::playPositionalSfx(const std::string &name, const Vector &position, flo
 
 void DSQ::shutdown()
 {
+	Network::shutdown();
+
 	scriptInterface.shutdown();
 	precacher.clean();
 	/*
@@ -4613,6 +4616,8 @@ void DSQ::onUpdate(float dt)
 
 
 	lockMouse();
+
+	Network::update();
 }
 
 void DSQ::lockMouse()
