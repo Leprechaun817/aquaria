@@ -43,7 +43,7 @@ typedef FILE VFILE;
 #define vfopen(a, b)            fopen((a), (b))
 #define vfread(a, b, c, d)      fread((a), (b), (c), (d))
 #define vfclose(a)              fclose((a))
-#define vfwrite(a, b, c, d) f   write((a), (b), (c), (d))
+#define vfwrite(a, b, c, d)     fwrite((a), (b), (c), (d))
 #define vfseek(a, b, c)         fseek((a), (b), (c))
 #define vfgets(a, b, c)         fgets((a), (b), (c))
 #define vftell(a)               ftell(a)
