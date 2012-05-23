@@ -2,11 +2,6 @@
 #include "Base.h"
 
 
-// If more threads are idle than this, start killing excess threads.
-// Note: This has nothing to do with the amount of CPU cores.
-//       The thread pool will create and destroy threads on demand.
-const int spareThreads = 8;
-
 
 // --------- Lockable ----------
 
@@ -75,28 +70,4 @@ void Waitable::broadcast()
 #ifdef BBGE_BUILD_SDL
 	SDL_CondBroadcast((SDL_cond*)_cond);
 #endif
-}
-
-// --------- Runnable ----------
-
-void Runnable::wait()
-{
-	MTGuard(this);
-	while (!_done)
-		Waitable::wait();
-}
-
-void Runnable::run()
-{
-	_run(); // this is the job's entry point
-
-	lock();
-		_done = true;
-		// we may get deleted  by another thread directly after unlock(), have to save this on the stack
-		volatile bool suicide = _suicide; 
-		broadcast(); // this accesses _cond, and must be done before unlock() too, same reason
-	unlock();
-	
-	if (suicide)
-		delete this;
 }

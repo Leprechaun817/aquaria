@@ -24,6 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "AquariaProgressBar.h"
 #include "tinyxml.h"
 #include "ModSelector.h"
+#include "ModDownloader.h"
 
 
 #define MOD_ICON_SIZE 150
@@ -34,7 +35,7 @@ static bool _modname_cmp(const ModIcon *a, const ModIcon *b)
 	return a->fname < b->fname;
 }
 
-ModSelectorScreen::ModSelectorScreen() : Quad(), currentPanel(-1)
+ModSelectorScreen::ModSelectorScreen() : Quad(), currentPanel(-1), gotServerList(false)
 {
 	followCamera = 1;
 	shareAlphaWithChildren = false;
@@ -235,7 +236,16 @@ void ModSelectorScreen::initModAndPatchPanel()
 
 void ModSelectorScreen::initNetPanel()
 {
-	// TODO
+	if(!gotServerList)
+	{
+		// FIXME: demo should be able to see downloadable mods imho
+#ifndef AQUARIA_DEMO
+		moddl.init();
+		//moddl.GetModlist(dsq->user.network.masterServer, -1); // FIXME
+		moddl.GetModlist("localhost/aq/mods.xml", true);
+#endif
+		gotServerList = true; // try only once
+	}
 
 	updateFade();
 }
@@ -458,6 +468,122 @@ void ModIcon::updateStatus()
 		scaleBig = scaleNormal * 1.1f;
 	}
 }
+
+ModIconOnline::ModIconOnline()
+: SubtitleIcon(), pb(0), extraIcon(0), clickable(true)
+// FIXME clickable - need to dl image first? better not. but what else to do to prevent messing up the progressbar?
+{
+	label = desc;
+	width = height = MOD_ICON_SIZE;
+}
+
+// return true if the desired texture could be set
+bool ModIconOnline::fixIcon()
+{
+	if(exists(iconfile))
+	{
+		setTexture(iconfile);
+		width = height = MOD_ICON_SIZE;
+		return Texture::textureError == TEXERR_OK;
+	}
+	if(!texture)
+	{
+		//setTexture("bitblot/logo");
+		int i = (rand() % 7) + 1;
+		std::stringstream ss;
+		ss << "fish-000" << i;
+		setTexture(ss.str());
+
+		if(width > MOD_ICON_SIZE || height > MOD_ICON_SIZE)
+			width = height = MOD_ICON_SIZE;
+	}
+	return false;
+}
+
+void ModIconOnline::onClick()
+{
+	dsq->sound->playSfx("click");
+
+#ifdef AQUARIA_DEMO
+	dsq->nag(NAG_TOTITLE);
+	return;
+#endif
+
+	bool success = false;
+
+	if(clickable)
+	{
+		bool proceed = true;
+		if(dsq->modIsKnown(localname))
+		{
+			mouseDown = false; // HACK: do this here else stack overflow!
+			proceed = dsq->confirm("Mod already exists. Re-download?");
+		}
+
+		if(proceed && confirmStr.length())
+		{
+			mouseDown = false; // HACK: do this here else stack overflow!
+			dsq->sound->playSfx("spirit-beacon");
+			proceed = dsq->confirm(confirmStr);
+		}
+
+		if(proceed)
+		{
+			moddl.GetMod(packageUrl, localname);
+			setDownloadProgress(0);
+			success = true;
+			clickable = false;
+		}
+		else
+			success = true; // we didn't want, anyway
+	}
+
+	if(!success)
+	{
+		SubtitleIcon::onClick(); // denied
+		if(clickable)
+		{
+			mouseDown = false; // HACK: do this here else stack overflow!
+			dsq->confirm("Unable to download file, bad URL", "", true);
+		}
+	}
+}
+
+void ModIconOnline::setDownloadProgress(float p, float barheight /* = 20 */)
+{
+	if(!pb)
+	{
+		pb = new JuicyProgressBar;
+		addChild(pb, PM_POINTER);
+		pb->width = width;
+		pb->height = 0;
+		pb->alpha = 0;
+	}
+
+	if(barheight != pb->height)
+	{
+		pb->height = barheight;
+		pb->width = width;
+		pb->position = Vector(0, (height - pb->height + 1) / 2); // +1 skips a pixel row and looks better
+	}
+
+	if(p >= 0 && p <= 1)
+	{
+		pb->alpha.interpolateTo(1, 0.2f);
+		pb->progress(p);
+	}
+	else
+	{
+		pb->alpha.interpolateTo(0, 0.2f);
+		pb->progress(0);
+	}
+}
+
+void ModIconOnline::updateStatus()
+{
+	// TODO: update extra icon and stuff
+}
+
 
 MenuBasicBar::MenuBasicBar() : AquariaGuiQuad()
 {

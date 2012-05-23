@@ -13,8 +13,26 @@ using namespace minihttp;
 
 namespace Network {
 
+struct RequestDataHolder
+{
+	RequestDataHolder() {}
+	RequestDataHolder(RequestData *rq) : rq(rq), recvd(rq->_th_recvd), total(rq->_th_total)
+	{
+		if(rq->_th_aborted)
+			ev = NE_ABORT;
+		else if(rq->_th_finished)
+			ev = NE_FINISH;
+		else
+			ev = NE_UPDATE;
+	}
+	RequestData *rq;
+	NetEvent ev;
+	size_t recvd;
+	size_t total;
+};
 
-static LockedQueue<RequestData*> doneRequests;
+// Stores requests which have something interesting
+static LockedQueue<RequestDataHolder> notifyRequests;
 
 
 class HttpDumpSocket : public HttpSocket
@@ -28,6 +46,14 @@ protected:
 	{
 		puts("_OnClose()");
 		minihttp::HttpSocket::_OnClose();
+
+		const Request& r = GetCurrentRequest();
+		RequestData *data = (RequestData*)(r.user);
+		if(!data->_th_finished)
+		{
+			data->_th_aborted = true;
+			notifyRequests.push(RequestDataHolder(data));
+		}
 	}
 	virtual void _OnOpen()
 	{
@@ -48,14 +74,16 @@ protected:
 			fclose(data->fp);
 			data->fp = NULL;
 		}
-		if(rename(data->tempFilename.c_str(), data->finalFilename.c_str()))
+		if(data->tempFilename != data->finalFilename)
 		{
-			perror("SOCKET: _OnRequestDone() failed to rename file");
-			data->fail = true;
+			if(rename(data->tempFilename.c_str(), data->finalFilename.c_str()))
+			{
+				perror("SOCKET: _OnRequestDone() failed to rename file");
+				data->fail = true;
+			}
 		}
-		
-		doneRequests.push(data);
-		// TODO: handle failed requests?
+		data->_th_finished = true;
+		notifyRequests.push(RequestDataHolder(data));
 	}
 
 	virtual void _OnRecv(char *buf, unsigned int size)
@@ -81,7 +109,12 @@ protected:
 			}
 		}
 		fwrite(buf, 1, size, data->fp);
+		data->_th_recvd += size;
+		data->_th_total = GetContentLen(); // 0 if chunked transfer encoding is used.
+		notifyRequests.push(RequestDataHolder(data));
 	}
+
+	// TODO: handle unexpected disconnect
 };
 
 // for first-time init, and signal to shut down worker thread
@@ -98,10 +131,10 @@ static LockedQueue<RequestData*> RQ;
 
 static int _NetworkWorkerThread(void *); // pre-decl
 
-bool init()
+static void init()
 {
 	if(netUp)
-		return true;
+		return;
 
 	puts("NETWORK: Init");
 
@@ -119,8 +152,6 @@ bool init()
 
 	if(!worker)
 		worker = SDL_CreateThread(_NetworkWorkerThread, NULL);
-
-	return true;
 }
 
 void shutdown()
@@ -167,14 +198,13 @@ static HttpDumpSocket *th_CreateSocket()
 // must only be run by _NetworkWorkerThread
 static void th_DoSendRequest(RequestData *rq)
 {
-	std::string host, file;
-	int port;
-	SplitURI(rq->url, host, file, port);
-	if(port < 0)
-		port = 80;
+	Request get;
+	SplitURI(rq->url, get.host, get.resource, get.port);
+	if(get.port < 0)
+		get.port = 80;
 
 	std::ostringstream hostdesc;
-	hostdesc << host << ':' << port;
+	hostdesc << get.host << ':' << get.port;
 
 	HttpDumpSocket *sock = th_GetSocketForHost(hostdesc.str());
 	if(!sock)
@@ -183,7 +213,8 @@ static void th_DoSendRequest(RequestData *rq)
 		sock = th_CreateSocket();
 	// TODO: keep a sane max. limit of sockets
 
-	sock->SendGet(file, rq);
+	get.user = rq;
+	sock->SendGet(get, false);
 }
 
 static int _NetworkWorkerThread(void *)
@@ -213,14 +244,15 @@ static int _NetworkWorkerThread(void *)
 
 void download(RequestData *rq)
 {
+	init();
 	RQ.push(rq);
 }
 
 void update()
 {
-	RequestData *rq;
-	while(doneRequests.popIfPossible(rq))
-		rq->notify();
+	RequestDataHolder h;
+	while(notifyRequests.popIfPossible(h))
+		h.rq->notify(h.ev, h.recvd, h.total);
 }
 
 

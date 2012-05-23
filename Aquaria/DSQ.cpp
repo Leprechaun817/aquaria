@@ -2846,6 +2846,26 @@ bool DSQ::mountModPackage(const std::string& pkg)
 #endif
 }
 
+#ifdef BBGE_BUILD_VFS
+static void _CloseSubdirCallback(ttvfs::VFSDir *vd, void*)
+{
+	vd->close();
+	ttvfs::VFSBase *origin = vd->getOrigin();
+	if(origin)
+		origin->close();
+}
+#endif
+
+// This just closes some file handles, nothing fancy
+void DSQ::unloadMods()
+{
+#ifdef BBGE_BUILD_VFS
+	ttvfs::VFSDir *mods = vfs.GetDir("_mods");
+	if(mods)
+		mods->forEachDir(_CloseSubdirCallback);
+#endif
+}
+
 void DSQ::applyParallaxUserSettings()
 {
 	dsq->getRenderObjectLayer(LR_ELEMENTS10)->visible = dsq->user.video.parallaxOn0;
@@ -2871,6 +2891,9 @@ void DSQ::clearModSelector()
 		modSelectorScr->fadeAlphaWithLife = 1;
 		modSelectorScr = 0;
 	}
+
+	// This just closes some file handles, nothing fancy
+	unloadMods();
 
 	clearMenu();
 }
@@ -3017,6 +3040,9 @@ void DSQ::title(bool fade)
 	{
 		mod.shutdown();
 	}
+
+	// Will be re-loaded on demand
+	unloadMods();
 	
 	// VERY important
 	dsq->continuity.reset();

@@ -1461,6 +1461,7 @@ public:
 	void clearModSelector();
 	bool mountModPackage(const std::string&);
 	bool modIsKnown(const std::string& name);
+	void unloadMods();
 	static void loadModsCallback(const std::string &filename, intptr_t param);
 	static void loadModPackagesCallback(const std::string &filename, intptr_t param);
 

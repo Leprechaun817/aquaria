@@ -2,6 +2,7 @@
 #define AQ_MOD_SELECTOR_H
 
 #include "AquariaMenuItem.h"
+#include "DSQ.h"
 
 class JuicyProgressBar : public Quad
 {
@@ -68,6 +69,29 @@ protected:
 	virtual void onClick();
 };
 
+class ModIconOnline : public SubtitleIcon
+{
+public:
+	ModIconOnline();
+	bool fixIcon();
+	std::string namestr; // name of the mod: <Fullname text="..."/>
+	std::string desc; // <Description text="..."/>
+	std::string iconfile; // expected local texture file name
+	std::string packageUrl; // where to download: <Package url="..." />
+
+	std::string localname; // _mods/<localname>.aqmod - under which name the file should be stored if downloaded. Can be empty.
+	std::string confirmStr; // <Confirm text="" /> -- pops up confirmation dialog before download if not empty.
+	void setDownloadProgress(float p, float barheight = 20);
+	virtual void updateStatus();
+	JuicyProgressBar *pb; // visible if downloading
+	Quad *extraIcon; // TODO: little icon in the lower right corner indicating status (out of date, newly added, has update, whatever)
+	bool clickable;
+
+protected:
+	virtual void onClick();
+};
+
+
 class MenuBasicBar : public AquariaGuiQuad
 {
 public:
@@ -125,6 +149,7 @@ protected:
 	MenuIconBar leftbar;
 	MenuArrowBar rightbar;
 	int currentPanel;
+	bool gotServerList;
 };
 
 #endif
