@@ -43,32 +43,37 @@ static bool zip_reader_init_vfsfile(mz_zip_archive *pZip, VFSFile *vf, mz_uint32
 
 
 VFSDirZip::VFSDirZip(VFSFile *zf)
-: VFSDir(zf->fullname()), _zf(zf), _isOpen(false)
+: VFSDir(zf->fullname()), _zf(zf)
 {
     _zf->ref++;
+    _setOrigin(this);
+    memset(&_zip, 0, sizeof(_zip));
 }
 
 VFSDirZip::~VFSDirZip()
 {
-    if(_isOpen)
-        mz_zip_reader_end(&_zip);
+    close();
     _zf->ref--;
+}
+
+bool VFSDirZip::close(void)
+{
+    mz_zip_reader_end(&_zip);
+    _zf->close();
+    return true;
 }
 
 VFSDir *VFSDirZip::createNew(const char *dir) const
 {
-    return new VFSDir(dir); // inside a Zip file; only the base dir can be a real VFSDirZip.
+    return VFSDir::createNew(dir); // inside a Zip file; only the base dir can be a real VFSDirZip.
 }
 
 unsigned int VFSDirZip::load(bool /*ignored*/)
 {
-    if(!_isOpen)
-    {
-        memset(&_zip, 0, sizeof(_zip));
-        if(!zip_reader_init_vfsfile(&_zip, _zf, 0))
-            return 0;
-        _isOpen = true;
-    }
+    close();
+
+    if(!zip_reader_init_vfsfile(&_zip, _zf, 0))
+        return 0;
 
     unsigned int files = mz_zip_reader_get_num_files(&_zip);
 
@@ -86,11 +91,15 @@ unsigned int VFSDirZip::load(bool /*ignored*/)
             continue;
 
         VFSFileZip *vf = new VFSFileZip(&_zip);
+        vf->_setOrigin(this);
         memcpy(vf->getZipFileStat(), &fs, sizeof(mz_zip_archive_file_stat));
         vf->_init();
         addRecursive(vf, true, VFSDir::NONE);
         vf->ref--;
     }
+
+    // Not necessary to keep open all the time, VFSFileZip will re-open the archive if needed
+    //close();
 
     return files;
 }

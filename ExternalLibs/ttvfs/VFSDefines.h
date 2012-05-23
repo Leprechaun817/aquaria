@@ -21,7 +21,7 @@
 // (no sane programmer should do this, anyway).
 // However, on non-windows systems this will decrease performance when checking for files
 // on disk (see VFSLoader.cpp).
-#define VFS_IGNORE_CASE
+//#define VFS_IGNORE_CASE
 
 // Define this to make all VFSFile, VFSDir, VFSHelper operations thread-safe.
 // If you do, do not forget to add your own implementation to VFSAtomic.cpp/.h !
@@ -40,7 +40,7 @@
 
 // These are used for small, temporary memory allocations that can remain on the stack.
 // If alloca is available, this is the preferred way.
-#include <malloc.h>
+#include <stdlib.h>
 #define VFS_STACK_ALLOC(size) alloca(size)
 #define VFS_STACK_FREE(ptr)   /* no need to free anything here */
 // Fail-safe:

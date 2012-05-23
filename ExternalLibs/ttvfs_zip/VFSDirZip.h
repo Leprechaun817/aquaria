@@ -16,14 +16,14 @@ public:
     virtual ~VFSDirZip();
     virtual unsigned int load(bool recusive);
     virtual VFSDir *createNew(const char *dir) const;
-    virtual const char *getType(void) const { return "VFSDirZip"; }
+    virtual const char *getType() const { return "VFSDirZip"; }
+    virtual bool close();
 
-    inline mz_zip_archive *getZip(void) { return &_zip; }
+    inline mz_zip_archive *getZip() { return &_zip; }
 
 protected:
     VFSFile *_zf;
     mz_zip_archive _zip;
-    bool _isOpen;
     std::string zipfilename;
 };
 

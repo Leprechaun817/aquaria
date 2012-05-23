@@ -21,7 +21,6 @@ public:
     virtual unsigned int read(void *dst, unsigned int bytes);
     virtual unsigned int write(const void *src, unsigned int bytes);
     virtual vfspos size(void);
-    virtual vfspos size(vfspos newsize);
     virtual const void *getBuf(allocator_func alloc = NULL, delete_func del = NULL);
     virtual void dropBuf(bool del);
     virtual const char *getType(void) const { return "Zip"; }

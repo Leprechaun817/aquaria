@@ -147,10 +147,13 @@ public:
     virtual VFSDir *createNew(const char *dir) const;
 
     /** For debugging. Does never return NULL. */
-    virtual const char *getType(void) const { return "VFSDir"; }
+    virtual const char *getType() const { return "VFSDir"; }
 
     /** Can be overloaded if necessary. Called by VFSHelper::ClearGarbage() */
-    virtual void clearGarbage(void) {}
+    virtual void clearGarbage() {}
+
+    /** Can be overloaded to close resources this dir keeps open */
+    virtual bool close() { return true; }
 
     /** Returns a file for this dir's subtree. Descends if necessary.
     Returns NULL if the file is not found. */
@@ -161,10 +164,13 @@ public:
     subdir. Otherwise return NULL if not found. */
     VFSDir *getDir(const char *subdir, bool forceCreate = false);
 
-
-
+    /** Recursively drops all files/dirs that were mounted into this directory (and subdirs) */
     void clearMounted();
 
+    /** Iterate over all files or directories, calling a callback function,
+        optionally with additional userdata. If safe is true, iterate over a copy.
+        This is useful if the callback function modifies the tree, e.g.
+        adds or removes files. */
     void forEachFile(FileEnumCallback f, void *user = NULL, bool safe = false);
     void forEachDir(DirEnumCallback f, void *user = NULL, bool safe = false);
 

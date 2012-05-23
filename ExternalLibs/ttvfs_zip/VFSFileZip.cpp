@@ -1,8 +1,35 @@
 #include "VFSFileZip.h"
 #include "VFSInternal.h"
 #include "VFSTools.h"
+#include "VFSDir.h"
 
 VFS_NAMESPACE_START
+
+// From miniz.c
+//#define MZ_ZIP_MODE_READING 2
+
+
+static bool zip_reader_reopen_vfsfile(mz_zip_archive *pZip, mz_uint32 flags)
+{
+    if(!(pZip && pZip->m_pIO_opaque && pZip->m_pRead))
+        return false;
+    if(pZip->m_zip_mode == MZ_ZIP_MODE_READING)
+        return true;
+    VFSFile *vf = (VFSFile*)pZip->m_pIO_opaque;
+    vf->open("rb");
+    mz_uint64 file_size = vf->size();
+    if(!file_size)
+    {
+        vf->close();
+        return false;
+    }
+    if (!mz_zip_reader_init(pZip, file_size, flags))
+    {
+        vf->close();
+        return false;
+    }
+    return true;
+}
 
 
 VFSFileZip::VFSFileZip(mz_zip_archive *zip)
@@ -114,22 +141,6 @@ vfspos VFSFileZip::size(void)
     return (vfspos)_zipstat.m_uncomp_size;
 }
 
-vfspos VFSFileZip::size(vfspos newsize)
-{
-    // TODO: write me
-    /*
-    VFS_GUARD_OPT(this);
-    if(newsize == size())
-        return newsize;
-
-    _zipstat.m_uncomp_size = newsize;
-    void *newbuf = allocHelper(...); // TODO: need to know last used allocator too?
-    return n;
-    */
-
-    return VFSFile::size(newsize);
-}
-
 const void *VFSFileZip::getBuf(allocator_func alloc /* = NULL */, delete_func del /* = NULL */)
 {
     assert(!alloc == !del); // either both or none may be defined. Checked extra early to prevent possible errors later.
@@ -146,6 +157,8 @@ const void *VFSFileZip::getBuf(allocator_func alloc /* = NULL */, delete_func de
         if(!_buf)
             return NULL;
         _delfunc = del;
+
+        zip_reader_reopen_vfsfile(_zip, 0);
         mz_zip_reader_extract_to_mem(_zip, _zipstat.m_file_index, _buf, sz, 0);
 
         if(_mode.find("b") == std::string::npos) // text mode?

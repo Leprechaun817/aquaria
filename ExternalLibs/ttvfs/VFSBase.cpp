@@ -12,6 +12,7 @@ VFSBase::VFSBase()
 #ifdef VFS_USE_HASHMAP
   , _hash(0)
 #endif
+  , _origin(NULL)
 {
 }
 

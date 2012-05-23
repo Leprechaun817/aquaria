@@ -31,7 +31,9 @@ unsigned int VFSDir::load(bool recursive)
 
 VFSDir *VFSDir::createNew(const char *dir) const
 {
-    return new VFSDir(dir);
+    VFSDir *vd = new VFSDir(dir);
+    vd->_setOrigin(getOrigin());
+    return vd;
 }
 
 bool VFSDir::add(VFSFile *f, bool overwrite, EntryFlags flag)
@@ -312,6 +314,7 @@ static void _iterDirs(VFSDir::Dirs &m, DirEnumCallback f, void *user)
 
 void VFSDir::forEachDir(DirEnumCallback f, void *user /* = NULL */, bool safe /* = false */)
 {
+    VFS_GUARD_OPT(this);
     if(safe)
     {
         Dirs cp = _subdirs;
@@ -331,6 +334,7 @@ static void _iterFiles(VFSDir::Files &m, FileEnumCallback f, void *user)
 
 void VFSDir::forEachFile(FileEnumCallback f, void *user /* = NULL */, bool safe /* = false */)
 {
+    VFS_GUARD_OPT(this);
     if(safe)
     {
         Files cp = _files;
@@ -359,16 +363,24 @@ unsigned int VFSDirReal::load(bool recursive)
 {
     VFS_GUARD_OPT(this);
 
-    Files cpf;
-    Dirs cpd;
+    Files remainF;
+    Dirs remainD;
+
+    remainF.swap(_files);
+    remainD.swap(_subdirs);
+
+    // _files, _subdirs now empty
 
     StringList li;
     GetFileList(fullname(), li);
     for(StringList::iterator it = li.begin(); it != li.end(); ++it)
     {
-        if(VFSFile *oldf = getFile(it->c_str()))
+        // file was already present, move over and erase
+        FileIter fi = remainF.find(it->c_str());
+        if(fi != remainF.end())
         {
-            cpf[oldf->name()] = oldf;
+            _files[fi->first] = fi->second;
+            remainF.erase(fi);
             continue;
         }
 
@@ -385,13 +397,16 @@ unsigned int VFSDirReal::load(bool recursive)
     GetDirList(fullname(), li, false);
     for(std::deque<std::string>::iterator it = li.begin(); it != li.end(); ++it)
     {
-        if(VFSDir *oldd = getDir(it->c_str()))
+        // subdir was already present, move over and erase
+        DirIter fi = remainD.find(it->c_str());
+        if(fi != remainD.end())
         {
             if(recursive)
-                sum += oldd->load(true);
+                sum += fi->second.ptr->load(true);
             ++sum;
 
-            cpd[oldd->name()] = oldd;
+            _subdirs[fi->first] = fi->second;
+            remainD.erase(fi);
             continue;
         }
 
@@ -407,15 +422,18 @@ unsigned int VFSDirReal::load(bool recursive)
         _subdirs[d->name()] = d;
     }
 
-    // clean up & remove no longer existing files & dirs
-    if(cpf.size())
-        for(FileIter it = cpf.begin(); it != cpf.end(); ++it)
-            if(_files.find(it->first) == _files.end())
-                it->second.ptr->ref--;
-    if(cpd.size())
-        for(DirIter it = cpd.begin(); it != cpd.end(); ++it)
-            if(_subdirs.find(it->first) == _subdirs.end())
-                it->second.ptr->ref--;
+    // clean up & remove no longer existing files & dirs,
+    // and move over entries mounted here.
+    for(FileIter it = remainF.begin(); it != remainF.end(); ++it)
+        if(it->second.isMounted())
+            _files[it->first] = it->second;
+        else
+            it->second.ptr->ref--;
+    for(DirIter it = remainD.begin(); it != remainD.end(); ++it)
+        if(it->second.isMounted())
+            _subdirs[it->first] = it->second;
+        else
+            it->second.ptr->ref--;
 
     return sum;
 }

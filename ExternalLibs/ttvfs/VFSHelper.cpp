@@ -78,7 +78,7 @@ void VFSHelper::Clear(void)
     loaders.clear();
 
     for(DirArray::iterator it = trees.begin(); it != trees.end(); ++it)
-        (*it)->ref--;
+        it->dir->ref--;
     trees.clear();
 
     for(ArchiveLoaderArray::iterator it = archLdrs.begin(); it != archLdrs.end(); ++it)
@@ -119,7 +119,12 @@ bool VFSHelper::LoadFileSysRoot(bool recursive)
     }
 
     loaders.push_back(new VFSLoaderDisk);
-    trees.push_back(filesysRoot);
+
+    BaseTreeEntry bt;
+    bt.source = "";
+    bt.dir = filesysRoot;
+    trees.push_back(bt);
+    filesysRoot->ref++;
 
     AddVFSDir(filesysRoot, "");
 
@@ -131,8 +136,8 @@ void VFSHelper::Prepare(bool clear /* = true */)
 {
     VFS_GUARD_OPT(this);
 
-	Reload(false, clear, false); // HACK
-    
+    Reload(false, clear, false); // HACK
+
     //for(DirArray::iterator it = trees.begin(); it != trees.end(); ++it)
     //    merged->getDir((*it)->fullname(), true)->merge(*it);
 }
@@ -149,10 +154,10 @@ void VFSHelper::Reload(bool fromDisk /* = false */, bool clear /* = false */, bo
     if(!merged && trees.size())
     {
         for(DirArray::iterator it = trees.begin(); it != trees.end(); ++it)
-            (*it)->clearMounted();
+            it->dir->clearMounted();
 
         // FIXME: not sure if really correct
-        merged = trees[0];
+        merged = trees[0].dir;
         merged->ref++;
 
         // FIXME: this is too hogging
@@ -203,13 +208,13 @@ bool VFSHelper::Unmount(const char *src, const char *dest)
     if(!_RemoveMountPoint(ve))
         return false;
 
-	// FIXME: this could be done more efficiently by just reloading parts of the tree that were involved.
+    // FIXME: this could be done more efficiently by just reloading parts of the tree that were involved.
     Reload(false, true, false);
     //vd->load(true);
-	//vd->load(false);
-	/*VFSDir *dstdir = GetDir(dest, false);
-	if(dstdir)
-		dstdir->load(false);*/
+    //vd->load(false);
+    /*VFSDir *dstdir = GetDir(dest, false);
+    if(dstdir)
+        dstdir->load(false);*/
     return true;
 }
 
@@ -253,11 +258,11 @@ bool VFSHelper::_RemoveMountPoint(const VDirEntry& ve)
     return false;
 }
 
-bool VFSHelper::MountExternalPath(const char *path, const char *where /* = "" */, bool overwrite /* = true */)
+bool VFSHelper::MountExternalPath(const char *path, const char *where /* = "" */, bool loadRec /* = false */, bool overwrite /* = true */)
 {
     VFS_GUARD_OPT(this);
     VFSDirReal *vfs = new VFSDirReal(path);
-    if(vfs->load(true))
+    if(vfs->load(loadRec))
         AddVFSDir(vfs, where, overwrite);
     return !!--(vfs->ref); // 0 if deleted
 }
@@ -291,7 +296,10 @@ VFSDir *VFSHelper::AddArchive(const char *arch, bool asSubdir /* = true */, cons
     if(fileLdr)
         loaders.push_back(fileLdr);
 
-    trees.push_back(ad);
+    BaseTreeEntry bt;
+    bt.source = arch;
+    bt.dir = ad;
+    trees.push_back(bt);
 
     AddVFSDir(ad, subdir, true);
 
@@ -394,10 +402,27 @@ VFSDir *VFSHelper::GetDirRoot(void)
     return merged;
 }
 
+VFSDir *VFSHelper::GetBaseTree(const char *path)
+{
+    for(DirArray::iterator it = trees.begin(); it != trees.end(); ++it)
+        if(!casecmp(it->source.c_str(), path))
+            return it->dir;
+    return NULL;
+}
+
+VFSDir *VFSHelper::GetMountPoint(const char *path)
+{
+    for(VFSMountList::iterator it = vlist.begin(); it != vlist.end(); ++it)
+        if(!casecmp(it->mountPoint.c_str(), path))
+            return it->vdir;
+    return NULL;
+}
+
+
 void VFSHelper::ClearGarbage(void)
 {
     for(DirArray::iterator it = trees.begin(); it != trees.end(); ++it)
-        (*it)->clearGarbage();
+        it->dir->clearGarbage();
 }
 
 

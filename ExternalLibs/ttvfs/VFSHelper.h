@@ -65,9 +65,12 @@ public:
         By default the directory is added into the root directory of the merged tree.
         Pass NULL to add the directory to its original location,
         or any other path to add it to that explicit location.
+        If loadRec is true, load all subdirs recursively.
         It is advised not to use this to re-add parts already in the tree; use Mount() instead.
-        Rule of thumb: If you called LoadFileSysRoot(), do not use this for subdirs. */
-    bool MountExternalPath(const char *path, const char *where = "", bool overwrite = true);
+        Rule of thumb: If you called LoadFileSysRoot(), do not use this for subdirs.
+        Note: Directories mounted with this will return `where` as their full path if it was set.
+              Use GetMountPoint() to retrieve the underlying VFSDir object. */
+    bool MountExternalPath(const char *path, const char *where = "", bool loadRec = false, bool overwrite = true);
 
     /** Adds a VFSDir object into the merged tree. If subdir is NULL (the default),
         add into the subdir stored in the VFSDir object. The tree will be extended if target dir does not exist.
@@ -113,6 +116,13 @@ public:
     /** Returns the tree root, which is usually the working directory. */
     VFSDir *GetDirRoot(void);
 
+    /** Returns one of the root tree sources by their internal name. */
+    VFSDir *GetBaseTree(const char *path);
+
+    /** Returns one of the mount points' base directory
+        (The one that is normally not acessible) */
+    VFSDir *GetMountPoint(const char *path);
+
     /** Remove a file or directory from the tree */
     //bool Remove(VFSFile *vf);
     //bool Remove(VFSDir *dir);
@@ -140,10 +150,16 @@ protected:
         bool overwrite;
     };
 
+    struct BaseTreeEntry
+    {
+        std::string source;
+        VFSDir *dir;
+    };
+
     typedef std::list<VDirEntry> VFSMountList;
     typedef std::vector<VFSLoader*> LoaderArray;
     typedef std::vector<VFSArchiveLoader*> ArchiveLoaderArray;
-    typedef std::vector<VFSDir*> DirArray;
+    typedef std::vector<BaseTreeEntry> DirArray;
 
 
     void _StoreMountPoint(const VDirEntry& ve);
