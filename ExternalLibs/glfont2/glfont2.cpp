@@ -19,6 +19,8 @@ using namespace std;
 #include <OpenGL/gl.h>
 */
 
+#include "GL/gl.h"
+
 //glFont header
 #include "glfont2.h"
 using namespace glfont;

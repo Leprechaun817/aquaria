@@ -319,24 +319,37 @@ static inline void luaPushPointer(lua_State *L, void *ptr)
 		lua_pushnumber(L, 0);
 }
 
-static std::string luaFormatStackInfo(lua_State *L)
+static std::string luaFormatStackInfo(lua_State *L, int level = 1)
 {
 	lua_Debug ar;
-	if (lua_getstack(L, 1, &ar))
-		lua_getinfo(L, "Sl", &ar);
+	std::ostringstream os;
+	if (lua_getstack(L, level, &ar) && lua_getinfo(L, "Sln", &ar))
+	{
+		os << ar.short_src << ":" << ar.currentline
+			<< " ([" << ar.what << "] "  << ar.namewhat << " " << (ar.name ? ar.name : "(?)") << ")";
+	}
 	else
 	{
-		snprintf(ar.short_src, sizeof(ar.short_src), "???");
-		ar.currentline = 0;
+		os << "???:0";
 	}
-	std::ostringstream os;
-	os << ar.short_src << ":" << ar.currentline;
+
 	return os.str();
 }
 
 static void scriptDebug(lua_State *L, const std::string& msg)
 {
 	debugLog(luaFormatStackInfo(L) + ": " + msg);
+}
+
+static void scriptError(lua_State *L, const std::string& msg)
+{
+	lua_Debug dummy;
+	std::ostringstream os;
+	os << msg;
+	for (int level = 0; lua_getstack(L, level, &dummy); ++level)
+		os << '\n' << luaFormatStackInfo(L, level);
+
+	scriptError(os.str());
 }
 
 
@@ -374,11 +387,10 @@ static void ensureType(lua_State *L, T *& ptr, ScriptObjectType ty)
 		if (!so->isType(ty))
 		{
 			std::ostringstream os;
-			os << "WARNING: " << luaFormatStackInfo(L)
-				<< ": script passed wrong pointer to function (expected type: "
+			os << "WARNING: script passed wrong pointer to function (expected type: "
 				<< ScriptObject::getTypeString(ty) << "; got: "
 				<< so->getTypeString() << ')';
-			scriptError(os.str());
+			scriptError(L, os.str());
 
 			ptr = NULL; // note that the pointer is passed by reference
 		}
@@ -618,11 +630,9 @@ luaFunc(indexWarnGlobal)
 
 		if (doWarn)
 		{
-			std::ostringstream os;
-			os << "WARNING: " << luaFormatStackInfo(L)
-			   << ": script tried to get/call undefined global variable "
-			   << varname;
-			scriptError(os.str());
+			std::string s = "WARNING: script tried to get/call undefined global variable ";
+			s += varname;
+			scriptError(L, s);
 		}
 
 		lua_pop(L, 1);
@@ -647,11 +657,10 @@ luaFunc(newindexWarnGlobal)
 	if (doWarn)
 	{
 		std::ostringstream os;
-		os << "WARNING: " << luaFormatStackInfo(L)
-		   << ": script set global "
-		   << (lua_type(L, -2) == LUA_TFUNCTION ? "function" : "variable")
+		os << "WARNING: script set global "
+		   << lua_typename(L, -2)
 		   << " " << varname;
-		scriptError(os.str());
+		scriptError(L, os.str());
 	}
 
 	lua_pop(L, 1);
@@ -670,10 +679,9 @@ luaFunc(indexWarnInstance)
 	if (lua_isnil(L, -1))
 	{
 		std::ostringstream os;
-		os << "WARNING: " << luaFormatStackInfo(L)
-		   << ": script tried to get/call undefined instance variable "
-		   << lua_tostring(L, -2);
-		scriptError(os.str());
+		os << "WARNING: script tried to get/call undefined instance variable "
+		   << getString(L, -2);
+		scriptError(L, os.str());
 	}
 	lua_remove(L, -2);
 
@@ -883,6 +891,12 @@ luaFunc(obj_getRotation)
 	luaReturnNum(r ? r->rotation.z : 0.0f);
 }
 
+luaFunc(obj_getRotationOffset)
+{
+	RenderObject *r = robj(L);
+	luaReturnNum(r ? r->rotationOffset.z : 0.0f);
+}
+
 luaFunc(obj_offset)
 {
 	RenderObject *r = robj(L);
@@ -905,6 +919,15 @@ luaFunc(obj_internalOffset)
 			lua_tonumber(L, 4), lua_tonumber(L, 5), lua_tonumber(L, 6), lua_tonumber(L, 7));
 	}
 	luaReturnNil();
+}
+
+luaFunc(obj_getInternalOffset)
+{
+	RenderObject *r = robj(L);
+	Vector io;
+	if (r)
+		io = r->internalOffset;
+	luaReturnVec2(io.x, io.y);
 }
 
 luaFunc(obj_getPosition)
@@ -1460,10 +1483,12 @@ luaFunc(quad_setHeight)
 	RO_FUNC(getter, prefix,  rotate			) \
 	RO_FUNC(getter, prefix,  rotateOffset	) \
 	RO_FUNC(getter, prefix,  getRotation	) \
+	RO_FUNC(getter, prefix,  getRotationOffset) \
 	RO_FUNC(getter, prefix,  isRotating		) \
 	RO_FUNC(getter, prefix,  offset			) \
 	RO_FUNC(getter, prefix,  getOffset		) \
 	RO_FUNC(getter, prefix,  internalOffset	) \
+	RO_FUNC(getter, prefix,  getInternalOffset) \
 	RO_FUNC(getter, prefix,  getPosition	) \
 	RO_FUNC(getter, prefix,  x				) \
 	RO_FUNC(getter, prefix,  y				) \
@@ -3328,6 +3353,18 @@ luaFunc(entity_animate)
 		ret = skel->transitionAnimate(getString(L, 2), transition, lua_tointeger(L, 3), lua_tointeger(L, 4));
 	}
 	luaReturnNum(ret);
+}
+
+luaFunc(entity_stopAnimation)
+{
+	SkeletalSprite *skel = getSkeletalSprite(entity(L));
+	if (skel)
+	{
+		AnimationLayer *animlayer = skel->getAnimationLayer(lua_tointeger(L, 2));
+		if (animlayer)
+			animlayer->stopAnimation();
+	}
+	luaReturnNil();
 }
 
 // entity, x, y, time, ease, relative
@@ -5692,7 +5729,7 @@ luaFunc(entity_pullEntities)
 	if (e)
 	{
 		Vector pos(lua_tonumber(L, 2), lua_tonumber(L, 3));
-		int range = lua_tonumber(L, 4);
+		float range = lua_tonumber(L, 4);
 		float len = lua_tonumber(L, 5);
 		float dt = lua_tonumber(L, 6);
 		FOR_ENTITIES(i)
@@ -6280,13 +6317,13 @@ luaFunc(toggleVersionLabel)
 luaFunc(setVersionLabelText)
 {
 	dsq->setVersionLabelText();
-	luaReturnPtr(NULL);
+	luaReturnNil();
 }
 
 luaFunc(setCutscene)
 {
 	dsq->setCutscene(getBool(L, 1), getBool(L, 2));
-	luaReturnPtr(NULL);
+	luaReturnNil();
 }
 
 luaFunc(isInCutscene)
@@ -6822,7 +6859,7 @@ luaFunc(entity_setWeight)
 {
 	CollideEntity *e = collideEntity(L);
 	if (e)
-		e->weight = lua_tointeger(L, 2);
+		e->weight = lua_tonumber(L, 2);
 	luaReturnNil();
 }
 
@@ -6917,6 +6954,13 @@ luaFunc(isObstructed)
 	int x = lua_tonumber(L, 1);
 	int y = lua_tonumber(L, 2);
 	luaReturnBool(dsq->game->isObstructed(TileVector(Vector(x,y))));
+}
+
+luaFunc(getObstruction)
+{
+	int x = lua_tonumber(L, 1);
+	int y = lua_tonumber(L, 2);
+	luaReturnInt(dsq->game->getGrid(TileVector(Vector(x,y))));
 }
 
 luaFunc(isObstructedBlock)
@@ -7491,6 +7535,7 @@ static const struct {
 	luaRegister(entity_doCollisionAvoidance),
 	luaRegister(entity_animate),
 	luaRegister(entity_setAnimLayerTimeMult),
+	luaRegister(entity_stopAnimation),
 
 	luaRegister(entity_setCurrentTarget),
 	luaRegister(entity_stopInterpolating),
@@ -7648,6 +7693,7 @@ static const struct {
 	luaRegister(castSong),
 	luaRegister(isObstructed),
 	luaRegister(isObstructedBlock),
+	luaRegister(getObstruction),
 
 	luaRegister(isFlag),
 
@@ -8663,6 +8709,12 @@ static const struct {
 	luaConstant(INPUT_MOUSE),
 	luaConstant(INPUT_JOYSTICK),
 	luaConstant(INPUT_KEYBOARD),
+
+	luaConstant(ANIMLAYER_FLOURISH),
+	luaConstant(ANIMLAYER_OVERRIDE),
+	luaConstant(ANIMLAYER_ARMOVERRIDE),
+	luaConstant(ANIMLAYER_UPPERBODYIDLE),
+	luaConstant(ANIMLAYER_HEADOVERRIDE),
 };
 
 //============================================================================================
