@@ -2143,7 +2143,7 @@ void DSQ::loadMods()
 void DSQ::applyPatches()
 {
 #ifndef AQUARIA_DEMO
-
+#ifdef BBGE_BUILD_VFS
 	//#ifdef BBGE_BUILD_MACOSX
 	// HACK: This should be in Core::setupVFS() !! (but dsq is unknown there)
 	// This is to correctly place the override files from _hackfixes.lvpa, which are in this dir always 
@@ -2160,6 +2160,7 @@ void DSQ::applyPatches()
 			if(modEntries[i].type == MODTYPE_PATCH)
 				if(!nocasecmp(modEntries[i].path.c_str(), it->c_str()))
 					applyPatch(modEntries[i].path);
+#endif
 #endif
 }
 
@@ -2226,6 +2227,7 @@ void DSQ::refreshResourcesForPatch(const std::string& name) {}
 
 void DSQ::applyPatch(const std::string& name)
 {
+#ifdef BBGE_BUILD_VFS
 #ifdef AQUARIA_DEMO
 	return;
 #endif
@@ -2237,10 +2239,12 @@ void DSQ::applyPatch(const std::string& name)
 
 	activePatches.insert(name);
 	refreshResourcesForPatch(name);
+#endif
 }
 
 void DSQ::unapplyPatch(const std::string& name)
 {
+#ifdef BBGE_BUILD_VFS
 	std::string src = mod.getBaseModPath();
 	src += name;
 	debugLog("Unapply patch: " + src);
@@ -2248,6 +2252,7 @@ void DSQ::unapplyPatch(const std::string& name)
 
 	activePatches.erase(name);
 	refreshResourcesForPatch(name);
+#endif
 }
 
 void DSQ::playMenuSelectSfx()
