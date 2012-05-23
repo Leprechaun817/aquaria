@@ -24,8 +24,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "AquariaProgressBar.h"
 #include "tinyxml.h"
 #include "ModSelector.h"
-#include "ModDownloader.h"
 
+#ifdef BBGE_BUILD_VFS
+#include "ModDownloader.h"
+#endif
 
 #define MOD_ICON_SIZE 150
 
@@ -469,6 +471,10 @@ void ModIcon::updateStatus()
 	}
 }
 
+
+#ifdef BBGE_BUILD_VFS
+
+
 ModIconOnline::ModIconOnline()
 : SubtitleIcon(), pb(0), extraIcon(0), clickable(true)
 // FIXME clickable - need to dl image first? better not. but what else to do to prevent messing up the progressbar?
@@ -584,6 +590,7 @@ void ModIconOnline::updateStatus()
 	// TODO: update extra icon and stuff
 }
 
+#endif // BBGE_BUILD_VFS
 
 MenuBasicBar::MenuBasicBar() : AquariaGuiQuad()
 {

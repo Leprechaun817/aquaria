@@ -40,14 +40,14 @@ private:
 #include <fstream>
 typedef std::ifstream InStream;
 typedef FILE VFILE;
-#define vfopen(a, b)            fopen((a), (b))
-#define vfread(a, b, c, d)      fread((a), (b), (c), (d))
-#define vfclose(a)              fclose((a))
-#define vfwrite(a, b, c, d)     fwrite((a), (b), (c), (d))
-#define vfseek(a, b, c)         fseek((a), (b), (c))
-#define vfgets(a, b, c)         fgets((a), (b), (c))
-#define vftell(a)               ftell(a)
-#define vfclear(a)
+#define vfopen        fopen
+#define vfread        fread
+#define vfclose       fclose
+#define vfwrite       fwrite
+#define vfseek        fseek
+#define vfgets        fgets
+#define vftell        ftell
+#define vfclear
 
 #endif // BBGE_BUILD_VFS
 

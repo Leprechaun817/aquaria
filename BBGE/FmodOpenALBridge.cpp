@@ -42,6 +42,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "ogg/ogg.h"
 #include "vorbis/vorbisfile.h"
 
+#include "FileAPI.h"
+
 #ifndef _DEBUG
 //#define _DEBUG 1
 #endif

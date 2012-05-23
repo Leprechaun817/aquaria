@@ -321,6 +321,7 @@ SET(AQUARIA_SRCS
     ${SRCDIR}/MiniMapRender.cpp
     ${SRCDIR}/Mod.cpp
     ${SRCDIR}/ModSelector.cpp
+    ${SRCDIR}/ModDownloader.cpp
     ${SRCDIR}/ParticleEditor.cpp
     ${SRCDIR}/Path.cpp
     ${SRCDIR}/PathFinding.cpp

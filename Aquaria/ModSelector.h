@@ -69,6 +69,8 @@ protected:
 	virtual void onClick();
 };
 
+#ifdef BBGE_BUILD_VFS
+
 class ModIconOnline : public SubtitleIcon
 {
 public:
@@ -90,6 +92,8 @@ public:
 protected:
 	virtual void onClick();
 };
+
+#endif // BBGE_BUILD_VFS
 
 
 class MenuBasicBar : public AquariaGuiQuad

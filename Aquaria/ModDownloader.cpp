@@ -1,8 +1,15 @@
+#include "DSQ.h"
+
+#ifdef BBGE_BUILD_VFS
+
 #include "ModDownloader.h"
 #include "ModSelector.h"
 #include "Network.h"
-#include "DSQ.h"
 #include "tinyxml.h"
+
+#ifdef BBGE_BUILD_UNIX
+#include <sys/stat.h>
+#endif
 
 using Network::NetEvent;
 using Network::NE_ABORT;
@@ -416,3 +423,5 @@ void ModDL::NotifyMod(ModRequest *rq, NetEvent ev, size_t recvd, size_t total)
 		}
 	}
 }
+
+#endif // BBGE_BUILD_VFS
