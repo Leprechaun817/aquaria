@@ -38,7 +38,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "RoundedRect.h"
 #include "TTFFont.h"
 #include "ModSelector.h"
+
+#ifdef BBGE_BUILD_VFS
 #include "Network.h"
+#endif
 
 
 #ifdef BBGE_BUILD_OPENGL
