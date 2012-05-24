@@ -238,6 +238,7 @@ void ModSelectorScreen::initModAndPatchPanel()
 
 void ModSelectorScreen::initNetPanel()
 {
+#ifdef BBGE_BUILD_VFS
 	if(!gotServerList)
 	{
 		// FIXME: demo should be able to see downloadable mods imho
@@ -248,6 +249,7 @@ void ModSelectorScreen::initNetPanel()
 #endif
 		gotServerList = true; // try only once
 	}
+#endif
 
 	updateFade();
 }

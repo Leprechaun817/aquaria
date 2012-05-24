@@ -212,7 +212,7 @@ void StatsAndAchievements::RunFrame()
 		size_t br = 0;
 		fname = (core->getUserDataFolder() + "/achievements.bin");
 		FILE *u = fopen(fname.c_str(), "rb");
-		if (io == NULL)
+		if (u == NULL)
 			statsValid = true;  // nothing to report.
 		else
 		{

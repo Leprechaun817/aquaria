@@ -322,6 +322,7 @@ SET(AQUARIA_SRCS
     ${SRCDIR}/Mod.cpp
     ${SRCDIR}/ModSelector.cpp
     ${SRCDIR}/ModDownloader.cpp
+    ${SRCDIR}/Network.cpp
     ${SRCDIR}/ParticleEditor.cpp
     ${SRCDIR}/Path.cpp
     ${SRCDIR}/PathFinding.cpp
@@ -386,6 +387,7 @@ SET(BBGE_SRCS
     ${BBGEDIR}/Joystick.cpp
     ${BBGEDIR}/LensFlare.cpp
     ${BBGEDIR}/Math.cpp
+    ${BBGEDIR}/MT.cpp
     ${BBGEDIR}/ParticleEffect.cpp
     ${BBGEDIR}/ParticleManager.cpp
     ${BBGEDIR}/Particles.cpp
@@ -420,6 +422,8 @@ SET(BBGE_SRCS
     ${EXTLIBDIR}/tinyxml.cpp
     ${EXTLIBDIR}/tinyxmlerror.cpp
     ${EXTLIBDIR}/tinyxmlparser.cpp
+    ${EXTLIBDIR}/FileAPI.cpp
+    ${EXTLIBDIR}/minihttp.cpp
 )
 
 SET(ZLIB_SRCS

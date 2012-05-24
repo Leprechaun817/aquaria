@@ -960,7 +960,11 @@ Core::Core(const std::string &filesystem, int numRenderLayers, const std::string
 
 	debugLogTextures = true;
 	
+#ifdef _DEBUG
+	grabInputOnReentry = 0;
+#else
 	grabInputOnReentry = -1;
+#endif
 
 	srand(time(NULL));
 	old_dt = 0;
@@ -2882,7 +2886,7 @@ void Core::main(float runTime)
 			*/
 		}
 
-#if (!defined(_DEBUG) || defined(BBGE_BUILD_UNIX)) && defined(BBGE_BUILD_SDL)
+#if !defined(_DEBUG) && defined(BBGE_BUILD_SDL)
 		if (verbose) debugLog("checking window active");
 
 		if (lib_graphics && (wasInactive || !settings.runInBackground))

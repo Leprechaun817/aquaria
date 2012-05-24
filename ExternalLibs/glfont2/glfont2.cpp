@@ -69,7 +69,8 @@ bool GLFont::Create (const char *file_name, int tex, bool loadTexture)
 	long int sz = vftell(fh);
 	vfseek(fh, 0, SEEK_SET);
 	ByteBuffer bb(sz);
-	vfread(bb.contents(), 1, bb.size(), fh);
+	bb.resize(sz);
+	vfread(bb.contents(), 1, sz, fh);
 	vfclose(fh);
 #endif
 
