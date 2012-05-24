@@ -2,6 +2,7 @@
 
 #include "FileAPI.h"
 #include "ttvfs_zip/VFSZipArchiveLoader.h"
+#include <stdio.h>
 
 
 ttvfs::VFSHelper vfs;
@@ -77,7 +78,7 @@ char *vfgets(char *str, int num, VFILE *vf)
 			break;
 		}
 	}
-	
+
 	vf->seekRel(i);
 	*s++ = 0;
 	return str;

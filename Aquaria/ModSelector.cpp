@@ -217,7 +217,7 @@ void ModSelectorScreen::initModAndPatchPanel()
 				debugLog(os.str());
 			}
 		}
-			
+
 		tv[i] = ico;
 		ico->loadEntry(dsq->modEntries[i]);
 	}
@@ -244,8 +244,10 @@ void ModSelectorScreen::initNetPanel()
 		// FIXME: demo should be able to see downloadable mods imho
 #ifndef AQUARIA_DEMO
 		moddl.init();
-		//moddl.GetModlist(dsq->user.network.masterServer, -1); // FIXME
-		moddl.GetModlist("localhost/aq/mods.xml", true);
+		std::string serv = dsq->user.network.masterServer;
+		if(serv.empty())
+			serv = DEFAULT_MASTER_SERVER;
+		moddl.GetModlist(serv, true);
 #endif
 		gotServerList = true; // try only once
 	}
@@ -701,7 +703,7 @@ void IconGridPanel::fade(bool in, bool sc)
 	for(Children::iterator it = children.begin(); it != children.end(); ++it)
 	{
 		(*it)->alpha.interpolateTo(newalpha, t);
-		
+
 		if(in)
 			if(ModIcon *ico = dynamic_cast<ModIcon*>(*it))
 				ico->updateStatus();

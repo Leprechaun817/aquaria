@@ -5,6 +5,8 @@
 #include <set>
 #include "Network.h"
 
+#define DEFAULT_MASTER_SERVER "fg.wzff.de/aqmods/"
+
 class ModlistRequest;
 class ModRequest;
 class IconRequest;

@@ -121,17 +121,17 @@ void UserSettings::save()
 				xml_fpsSmoothing.SetAttribute("v", video.fpsSmoothing);
 			}
 			xml_video.InsertEndChild(xml_fpsSmoothing);
-			
+
 			TiXmlElement xml_parallax("Parallax");
 			std::ostringstream os;
 			os << video.parallaxOn0 << " " << video.parallaxOn1 << " " << video.parallaxOn2;
 			xml_parallax.SetAttribute("on", os.str());
 			xml_video.InsertEndChild(xml_parallax);
-			
+
 			TiXmlElement xml_numParticles("NumParticles");
 			xml_numParticles.SetAttribute("v", video.numParticles);
 			xml_video.InsertEndChild(xml_numParticles);
-			
+
 			TiXmlElement xml_screenMode("ScreenMode");
 			{
 				xml_screenMode.SetAttribute("resx",				video.resx);
@@ -197,7 +197,7 @@ void UserSettings::save()
 				xml_joyAxes.SetDoubleAttribute("s2dead", double(control.s2dead));
 			}
 			xml_control.InsertEndChild(xml_joyAxes);
-			
+
 			TiXmlElement xml_actionSet("ActionSet");
 			{
 				for (int i = 0; i < control.actionSet.inputSet.size(); i++)
@@ -227,7 +227,7 @@ void UserSettings::save()
 				xml_intro.SetAttribute("on", demo.intro);
 			}
 			xml_demo.InsertEndChild(xml_intro);
-			
+
 			TiXmlElement xml_shortLogos("ShortLogos");
 			{
 				xml_shortLogos.SetAttribute("on", demo.shortLogos);
@@ -235,7 +235,7 @@ void UserSettings::save()
 			xml_demo.InsertEndChild(xml_shortLogos);
 		}
 		doc.InsertEndChild(xml_demo);
-		
+
 		TiXmlElement xml_data("Data");
 		{
 			xml_data.SetAttribute("savePage",			data.savePage);
@@ -247,8 +247,15 @@ void UserSettings::save()
 			xml_data.SetAttribute("activePatches",	ss.str());
 		}
 		doc.InsertEndChild(xml_data);
+
+		TiXmlElement xml_net("Network");
+		{
+			xml_net.SetAttribute("masterServer",		network.masterServer);
+		}
+		doc.InsertEndChild(xml_net);
+
 	}
-	
+
 #if defined(BBGE_BUILD_UNIX)
 	doc.SaveFile(dsq->getPreferencesFolder() + "/" + userSettingsFilename);
 #elif defined(BBGE_BUILD_WINDOWS)
@@ -314,7 +321,7 @@ void UserSettings::loadDefaults(bool doApply)
 void UserSettings::load(bool doApply, const std::string &overrideFile)
 {
 	TiXmlDocument doc;
-	
+
 #if defined(BBGE_BUILD_UNIX)
 	doc.LoadFile(dsq->getPreferencesFolder() + "/" + userSettingsFilename);
 #elif defined(BBGE_BUILD_WINDOWS)
@@ -323,7 +330,7 @@ void UserSettings::load(bool doApply, const std::string &overrideFile)
 	else
 		doc.LoadFile(userSettingsFilename);
 #endif
-	
+
 	version.settingsVersion = 0;
 
 	TiXmlElement *xml_version = doc.FirstChildElement("Version");
@@ -408,7 +415,7 @@ void UserSettings::load(bool doApply, const std::string &overrideFile)
 		readInt(xml_video, "NoteEffects", "on", &video.noteEffects);
 
 		readInt(xml_video, "FpsSmoothing", "v", &video.fpsSmoothing);
-		
+
 		/*
 		readInt(xml_video, "Parallax", "on", &video.parallaxOn);
 		*/
@@ -421,7 +428,7 @@ void UserSettings::load(bool doApply, const std::string &overrideFile)
 				is >> video.parallaxOn0 >> video.parallaxOn1 >> video.parallaxOn2;
 			}
 		}
-		
+
 		readInt(xml_video, "NumParticles", "v", &video.numParticles);
 
 		TiXmlElement *xml_screenMode = xml_video->FirstChildElement("ScreenMode");
@@ -482,16 +489,16 @@ void UserSettings::load(bool doApply, const std::string &overrideFile)
 				if (!name.empty())
 				{
 					ActionInput *ai = control.actionSet.addActionInput(name);
-					
+
 					ai->fromString(xml_action->Attribute("input"));
 				}
 				xml_action = xml_action->NextSiblingElement();
 			}
 		}
-		
+
 		readInt(xml_control, "ToolTipsOn", "on", &control.toolTipsOn);
 	}
-	
+
 	TiXmlElement *xml_demo = doc.FirstChildElement("Demo");
 	if (xml_demo)
 	{
@@ -499,7 +506,7 @@ void UserSettings::load(bool doApply, const std::string &overrideFile)
 		readInt(xml_demo, "Intro2", "on", &demo.intro);
 		readInt(xml_demo, "ShortLogos", "on", &demo.shortLogos);
 	}
-	
+
 	TiXmlElement *xml_data = doc.FirstChildElement("Data");
 	if (xml_data)
 	{
@@ -517,6 +524,12 @@ void UserSettings::load(bool doApply, const std::string &overrideFile)
 					dsq->activePatches.insert(tmp);
 			}
 		}
+	}
+
+	TiXmlElement *xml_net = doc.FirstChildElement("Network");
+	if (xml_net)
+	{
+		network.masterServer = xml_net->Attribute("masterServer");
 	}
 
 	if (system.locale.empty())
@@ -557,10 +570,10 @@ void UserSettings::apply()
 
 		if (dsq->game->avatar)
 		{
-			dsq->game->avatar->updateHeartbeatSfx();	
+			dsq->game->avatar->updateHeartbeatSfx();
 		}
 	}
-	
+
 	dsq->bindInput();
 #endif
 }
