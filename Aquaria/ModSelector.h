@@ -25,6 +25,7 @@ class BasicIcon : public AquariaGuiQuad
 public:
 	BasicIcon();
 	std::string label;
+	virtual bool isGuiVisible();
 
 protected:
 	bool mouseDown;
@@ -127,12 +128,14 @@ public:
 	void fade(bool in, bool sc);
 	void add(RenderObject *obj);
 	int spacing;
+	int getUsedX() const { return x; }
+	int getUsedY() const { return y; }
 
 protected:
-	int x, y; 
+	int x, y;
 };
 
-class ModSelectorScreen : public Quad
+class ModSelectorScreen : public Quad, public ActionMapper
 {
 public:
 	ModSelectorScreen();
@@ -146,12 +149,17 @@ public:
 	void initModAndPatchPanel();
 	void initNetPanel();
 
+	void moveUp();
+	void moveDown();
+	void move(int ud);
+
 	std::vector<IconGridPanel*> panels;
 
 protected:
 	virtual void onUpdate(float dt);
 	MenuIconBar leftbar;
 	MenuArrowBar rightbar;
+	AquariaMenuItem arrowUp, arrowDown;
 	int currentPanel;
 	bool gotServerList;
 };

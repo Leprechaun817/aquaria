@@ -978,9 +978,10 @@ bool AquariaMenuItem::isCursorInMenuItem()
 	{
 		std::swap(hw, hh);
 	}
-	if (v.y > position.y - hh && v.y < position.y + hh)
+	Vector pos = getWorldPosition();
+	if (v.y > pos.y - hh && v.y < pos.y + hh)
 	{
-		if (v.x > position.x - hw && v.x < position.x + hw)
+		if (v.x > pos.x - hw && v.x < pos.x + hw)
 		{
 			return true;
 		}

@@ -46,6 +46,46 @@ ModSelectorScreen::ModSelectorScreen() : Quad(), currentPanel(-1), gotServerList
 	color = 0;
 }
 
+void ModSelectorScreen::moveUp()
+{
+	move(5);
+}
+
+void ModSelectorScreen::moveDown()
+{
+	move(-5);
+}
+
+void ModSelectorScreen::move(int ud)
+{
+	IconGridPanel *grid = panels[currentPanel];
+	InterpolatedVector& v = grid->position;
+	float ch = ud * 42;
+	if(v.isInterpolating())
+	{
+		v.data->from = v;
+		v.data->target.y += ch;
+		v.data->timePassed = 0;
+
+		if(v.data->target.y > 150)
+			v.data->target.y = 150;
+		else if(v.data->target.y < -grid->getUsedY() / 2)
+			v.data->target.y = -grid->getUsedY() / 2;
+	}
+	else
+	{
+		Vector v2 = grid->position;
+		v2.y += ch; // scroll down == grid pos y gets negative (grid scrolls up)
+
+		if(v2.y > 150)
+			grid->position.interpolateTo(Vector(v2.x, 150), 0.4f);
+		else if(v2.y < -grid->getUsedY() / 2)
+			grid->position.interpolateTo(Vector(v2.x, -grid->getUsedY() / 2), 0.4f);
+		else
+			grid->position.interpolateTo(v2, 0.2f, 0, false, true);
+	}
+}
+
 void ModSelectorScreen::onUpdate(float dt)
 {
 	Quad::onUpdate(dt);
@@ -53,22 +93,7 @@ void ModSelectorScreen::onUpdate(float dt)
 	// mouse wheel scroll
 	if(dsq->mouse.scrollWheelChange)
 	{
-		IconGridPanel *grid = panels[currentPanel];
-		InterpolatedVector& v = grid->position;
-		float ch = dsq->mouse.scrollWheelChange * 42;
-		if(v.isInterpolating())
-		{
-			v.data->from = v;
-			v.data->target.y += ch;
-			v.data->timePassed = 0;
-		}
-		else
-		{
-			Vector v2 = grid->position;
-			v2.y += ch;
-			grid->position.interpolateTo(v2, 0.2f, 0, false, true);
-		}
-		//grid->position = Vector(grid->position.x, grid->position.y + (dsq->mouse.scrollWheelChange * 32));
+		move(dsq->mouse.scrollWheelChange);
 	}
 }
 
@@ -165,6 +190,30 @@ void ModSelectorScreen::init()
 		leftbar.icons[i]->cb_data = this;
 		addChild(panels[i], PM_POINTER);
 	}
+
+	arrowUp.useQuad("Gui/arrow-left");
+	arrowUp.useSound("click");
+	arrowUp.useGlow("particles/glow", 128, 64);
+	arrowUp.position = Vector(0, -200);
+	arrowUp.followCamera = 1;
+	arrowUp.rotation.z = 90;
+	arrowUp.event.set(MakeFunctionEvent(ModSelectorScreen, moveUp));
+	arrowUp.guiInputLevel = 100;
+	arrowUp.alpha = 0;
+	arrowUp.alpha.interpolateTo(1, 0.2f);
+	rightbar.addChild(&arrowUp, PM_STATIC);
+
+	arrowDown.useQuad("Gui/arrow-right");
+	arrowDown.useSound("click");
+	arrowDown.useGlow("particles/glow", 128, 64);
+	arrowDown.position = Vector(0, 200);
+	arrowDown.followCamera = 1;
+	arrowDown.rotation.z = 90;
+	arrowDown.event.set(MakeFunctionEvent(ModSelectorScreen, moveDown));
+	arrowDown.guiInputLevel = 100;
+	arrowDown.alpha = 0;
+	arrowDown.alpha.interpolateTo(1, 0.2f);
+	rightbar.addChild(&arrowDown, PM_STATIC);
 
 	// NEW GRID VIEW
 
@@ -306,6 +355,11 @@ void JuicyProgressBar::progress(float p)
 BasicIcon::BasicIcon() : AquariaGuiQuad(), mouseDown(false),
 scaleNormal(1,1), scaleBig(scaleNormal * 1.1f)
 {
+}
+
+bool BasicIcon::isGuiVisible()
+{
+	return !isHidden() && alpha.x > 0 && alphaMod > 0;
 }
 
 void BasicIcon::onUpdate(float dt)
