@@ -230,7 +230,7 @@ static int _NetworkWorkerThread(void *)
 	RequestData *rq;
 	while(netUp)
 	{
-		while(RQ.popIfPossible(rq))
+		while(RQ.pop(rq))
 		{
 			th_DoSendRequest(rq);
 		}
@@ -251,7 +251,7 @@ void download(RequestData *rq)
 void update()
 {
 	RequestDataHolder h;
-	while(notifyRequests.popIfPossible(h))
+	while(notifyRequests.pop(h))
 		h.rq->notify(h.ev, h.recvd, h.total);
 }
 

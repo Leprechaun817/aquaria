@@ -52,15 +52,15 @@ public:
 		unlock();
 		signal();
 	}
-	T pop() // blocks if empty
+	bool pop(T& e) // blocks if empty
 	{
 		lock();
 		while(_q.empty())
 			wait();
-		T ret = _q.front();
+		e = _q.front();
 		_q.pop();
 		unlock();
-		return ret;
+		return true;
 	}
 private:
 	std::queue<T> _q;
@@ -75,13 +75,18 @@ public:
 		_q.push(e);
 		unlock();
 	}
-	T pop()
+	bool pop(T& e) // continues if empty
 	{
 		lock();
-		T ret = _q.empty() ? T() : _q.front();
+		if(_q.empty())
+		{
+			unlock();
+			return false;
+		}
+		e = _q.front();
 		_q.pop();
 		unlock();
-		return ret;
+		return true;
 	}
 	bool empty()
 	{
@@ -89,19 +94,6 @@ public:
 		bool e = _q.empty();
 		unlock();
 		return e;
-	}
-	bool popIfPossible(T& e)
-	{
-		lock();
-		if(!_q.empty())
-		{
-			e = _q.front();
-			_q.pop();
-			unlock();
-			return true;
-		}
-		unlock();
-		return false;
 	}
 
 private:

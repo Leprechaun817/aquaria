@@ -1,7 +1,7 @@
 #include "MT.h"
 #include "Base.h"
 
-
+#ifdef BBGE_BUILD_SDL
 
 // --------- Lockable ----------
 
@@ -71,3 +71,5 @@ void Waitable::broadcast()
 	SDL_CondBroadcast((SDL_cond*)_cond);
 #endif
 }
+
+#endif // BBGE_BUILD_SDL
