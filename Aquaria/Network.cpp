@@ -18,7 +18,7 @@ struct RequestDataHolder
 	RequestDataHolder() {}
 	RequestDataHolder(RequestData *rq) : rq(rq), recvd(rq->_th_recvd), total(rq->_th_total)
 	{
-		if(rq->_th_aborted)
+		if(rq->_th_aborted || rq->fail)
 			ev = NE_ABORT;
 		else if(rq->_th_finished)
 			ev = NE_FINISH;
@@ -83,6 +83,7 @@ protected:
 			}
 		}
 		data->_th_finished = true;
+		data->_th_aborted = (GetStatusCode() != minihttp::HTTP_OK);
 		notifyRequests.push(RequestDataHolder(data));
 	}
 
@@ -90,7 +91,7 @@ protected:
 	{
 		if(!size)
 			return;
-		/*if(GetStatusCode() != 200)
+		/*if(GetStatusCode() != minihttp::HTTP_OK)
 		{
 			printf("NETWORK: Got %u bytes with status code %u", size, GetStatusCode());
 			return;
