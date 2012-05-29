@@ -197,7 +197,7 @@ static HttpDumpSocket *th_CreateSocket()
 
 
 // must only be run by _NetworkWorkerThread
-static void th_DoSendRequest(RequestData *rq)
+static bool th_DoSendRequest(RequestData *rq)
 {
 	Request get;
 	SplitURI(rq->url, get.host, get.resource, get.port);
@@ -215,7 +215,7 @@ static void th_DoSendRequest(RequestData *rq)
 	// TODO: keep a sane max. limit of sockets
 
 	get.user = rq;
-	sock->SendGet(get, false);
+	return sock->SendGet(get, false);
 }
 
 static int _NetworkWorkerThread(void *)
@@ -233,7 +233,11 @@ static int _NetworkWorkerThread(void *)
 	{
 		while(RQ.pop(rq))
 		{
-			th_DoSendRequest(rq);
+			if(!th_DoSendRequest(rq))
+			{
+				rq->_th_aborted = true;
+				notifyRequests.push(RequestDataHolder(rq));
+			}
 		}
 		while(sockets.update()) {}
 		SDL_Delay(10);

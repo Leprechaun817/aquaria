@@ -37,13 +37,15 @@ static bool _modname_cmp(const ModIcon *a, const ModIcon *b)
 	return a->fname < b->fname;
 }
 
-ModSelectorScreen::ModSelectorScreen() : Quad(), currentPanel(-1), gotServerList(false)
+ModSelectorScreen::ModSelectorScreen() : Quad(), ActionMapper(),
+currentPanel(-1), gotServerList(false), dlText(&dsq->smallFont)
 {
 	followCamera = 1;
 	shareAlphaWithChildren = false;
 	alpha = 1;
 	alphaMod = 0.1f;
 	color = 0;
+	globeIcon = NULL;
 }
 
 void ModSelectorScreen::moveUp()
@@ -215,6 +217,13 @@ void ModSelectorScreen::init()
 	arrowDown.alpha.interpolateTo(1, 0.2f);
 	rightbar.addChild(&arrowDown, PM_STATIC);
 
+	dlText.alpha = 0;
+	dlText.position = Vector(0, 0);
+	dlText.setFontSize(15);
+	dlText.scale = Vector(1.5f, 1.5f);
+	dlText.followCamera = 1;
+	addChild(&dlText, PM_STATIC);
+
 	// NEW GRID VIEW
 
 	initModAndPatchPanel();
@@ -298,7 +307,7 @@ void ModSelectorScreen::initNetPanel()
 			serv = DEFAULT_MASTER_SERVER;
 		moddl.GetModlist(serv, true);
 #endif
-		gotServerList = true; // try only once
+		gotServerList = true; // try only once, for now
 	}
 #endif
 
@@ -323,6 +332,9 @@ void ModSelectorScreen::close()
 	//panels[currentPanel]->scale.interpolateTo(Vector(0.9f, 0.9f), t); // HMM
 	dsq->subtext->alpha.interpolateTo(0, t/1.2f);
 	dsq->subbox->alpha.interpolateTo(0, t);
+	dlText.setHidden(true);
+	arrowDown.glow->setHidden(true);
+	arrowUp.glow->setHidden(true);
 	dsq->user.save();
 }
 
@@ -686,6 +698,7 @@ void MenuIconBar::init()
 	y += ico->height;
 	ico->position = Vector(0, y);
 	add(ico);
+	dsq->modSelectorScr->globeIcon = ico; // HACK
 
 	ico = new MenuIcon(3);
 	ico->label = "Return to title";

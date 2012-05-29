@@ -165,16 +165,61 @@ void ModDL::GetModlist(const std::string& url, bool allowChaining)
 	rq->finalFilename = localName; // FIXME ?
 	rq->allowChaining = allowChaining;
 	rq->url = url;
+	// TODO: add RenderObject to request, and fade out once arrived? Like that it displays a list of servers it's waiting for.
 
 	Network::download(rq);
+
+	ModSelectorScreen* scr = dsq->modSelectorScr;
+	if(scr)
+	{
+		scr->globeIcon->color.interpolateTo(Vector(1,1,1), 0.3f);
+		scr->globeIcon->alpha.interpolateTo(0.5f, 0.2f, -1, true, true);
+		scr->dlText.setText("Retrieving online mod list...");
+		scr->dlText.alpha.stopPath();
+		scr->dlText.alpha.interpolateTo(1, 0.1f);
+	}
 }
 
 void ModDL::NotifyModlist(ModlistRequest *rq, NetEvent ev, size_t recvd, size_t total)
 {
-	if(ev == NE_ABORT || ev != NE_FINISH)
+	if(ev == NE_UPDATE)
 		return;
 
+	ModSelectorScreen* scr = dsq->modSelectorScr;
+
+	if(ev == NE_ABORT)
+	{
+		dsq->sound->playSfx("denied");
+		if(scr)
+		{
+			scr->globeIcon->alpha.stop();
+			scr->globeIcon->alpha.interpolateTo(1, 0.5f, 0, false, true);
+			scr->globeIcon->color.interpolateTo(Vector(0.5f, 0.5f, 0.5f), 0.3f);
+			scr->dlText.setText("Unable to retrieve online mod list.\nCheck your connection and try again.");
+			scr->dlText.alpha = 0;
+			scr->dlText.alpha.ensureData();
+			scr->dlText.alpha.data->path.addPathNode(0, 0);
+			scr->dlText.alpha.data->path.addPathNode(1, 0.1);
+			scr->dlText.alpha.data->path.addPathNode(1, 0.7);
+			scr->dlText.alpha.data->path.addPathNode(0, 1);
+			scr->dlText.alpha.startPath(5);
+			scr->gotServerList = false; // FIXME: not fully correct. only do this for first modlist request!
+		}
+		return;
+	}
+
 	// TODO: prevent endless looping
+
+	
+	if(scr)
+	{
+		scr->globeIcon->alpha.stop();
+		scr->globeIcon->alpha.interpolateTo(1, 0.2f);
+		dsq->clickRingEffect(scr->globeIcon->getWorldPosition(), 1);
+		scr->dlText.setText("Retrieving mod list...");
+		scr->dlText.alpha.stopPath();
+		scr->dlText.alpha.interpolateTo(0, 0.3f);
+	}
 
 	if(!ParseModXML(rq->finalFilename, rq->allowChaining))
 	{
@@ -294,6 +339,7 @@ bool ModDL::ParseModXML(const std::string& fn, bool allowChaining)
 			ico->desc = descstr;
 			ico->confirmStr = confirmStr;
 			ico->localname = localname;
+			ico->label = "[" + namestr + "] " + descstr;
 			grid->add(ico);
 		}
 		if(!ico->fixIcon()) // try to set texture, if its not there, download it

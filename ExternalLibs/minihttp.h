@@ -47,7 +47,7 @@ public:
     bool SendBytes(const char *str, unsigned int len);
 
 protected:
-
+    virtual void _OnCloseInternal();
     virtual void _OnData(); // data received callback. Internal, should only be overloaded to call _OnRecv()
 
     virtual void _OnRecv(char *buf, unsigned int size) = 0;
@@ -139,8 +139,10 @@ public:
     const Request &GetCurrentRequest() const { return _curRequest; }
     const char *Hdr(const char *h) const;
 
-protected:
+    bool IsRedirecting() const;
 
+protected:
+    virtual void _OnCloseInternal();
     virtual void _OnClose();
     virtual void _OnData(); // data received callback. Internal, should only be overloaded to call _OnRecv()
     virtual void _OnRecv(char *buf, unsigned int size) = 0;

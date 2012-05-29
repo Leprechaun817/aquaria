@@ -154,6 +154,9 @@ public:
 	void move(int ud);
 
 	std::vector<IconGridPanel*> panels;
+	MenuIcon *globeIcon;
+	BitmapText dlText;
+	bool gotServerList;
 
 protected:
 	virtual void onUpdate(float dt);
@@ -161,7 +164,6 @@ protected:
 	MenuArrowBar rightbar;
 	AquariaMenuItem arrowUp, arrowDown;
 	int currentPanel;
-	bool gotServerList;
 };
 
 #endif
