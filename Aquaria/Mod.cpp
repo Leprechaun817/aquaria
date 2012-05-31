@@ -77,9 +77,9 @@ bool Mod::isEditorBlocked()
 	return blockEditor;
 }
 
-void Mod::loadModXML(TiXmlDocument *d, std::string modName)
+bool Mod::loadModXML(TiXmlDocument *d, std::string modName)
 {
-	d->LoadFile(baseModPath + modName + ".xml");
+	return d->LoadFile(baseModPath + modName + ".xml");
 }
 
 std::string Mod::getBaseModPath()

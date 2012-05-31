@@ -20,12 +20,13 @@ protected:
 	float perc;
 };
 
-class BasicIcon : public AquariaGuiQuad
+class BasicIcon : public AquariaMenuItem
 {
 public:
 	BasicIcon();
 	std::string label;
 	virtual bool isGuiVisible();
+	virtual bool isCursorInMenuItem();
 
 protected:
 	bool mouseDown;
@@ -77,6 +78,7 @@ class ModIconOnline : public SubtitleIcon
 public:
 	ModIconOnline();
 	bool fixIcon();
+	bool hasPkgOnDisk();
 	std::string namestr; // name of the mod: <Fullname text="..."/>
 	std::string desc; // <Description text="..."/>
 	std::string iconfile; // expected local texture file name
@@ -85,10 +87,12 @@ public:
 	std::string localname; // _mods/<localname>.aqmod - under which name the file should be stored if downloaded. Can be empty.
 	std::string confirmStr; // <Confirm text="" /> -- pops up confirmation dialog before download if not empty.
 	void setDownloadProgress(float p, float barheight = 20);
-	virtual void updateStatus();
 	JuicyProgressBar *pb; // visible if downloading
-	Quad *extraIcon; // TODO: little icon in the lower right corner indicating status (out of date, newly added, has update, whatever)
+	Quad *extraIcon; // installed or update available
+	Quad *statusIcon;
 	bool clickable;
+	bool isPatch;
+	bool hasUpdate;
 
 protected:
 	virtual void onClick();
@@ -97,7 +101,7 @@ protected:
 #endif // BBGE_BUILD_VFS
 
 
-class MenuBasicBar : public AquariaGuiQuad
+class MenuBasicBar : public Quad
 {
 public:
 	MenuBasicBar();
@@ -121,12 +125,12 @@ public:
 };
 
 
-class IconGridPanel : public AquariaGuiQuad
+class IconGridPanel : public Quad
 {
 public:
 	IconGridPanel();
 	void fade(bool in, bool sc);
-	void add(RenderObject *obj);
+	void add(BasicIcon *obj);
 	int spacing;
 	int getUsedX() const { return x; }
 	int getUsedY() const { return y; }
@@ -151,19 +155,24 @@ public:
 
 	void moveUp();
 	void moveDown();
-	void move(int ud);
+	void move(int ud, bool instant = false);
 
 	std::vector<IconGridPanel*> panels;
-	MenuIcon *globeIcon;
+	MenuIcon *globeIcon, *modsIcon;
 	BitmapText dlText;
 	bool gotServerList;
+	AquariaMenuItem arrowUp, arrowDown;
+
+	void setSubText(const std::string& s);
 
 protected:
 	virtual void onUpdate(float dt);
 	MenuIconBar leftbar;
 	MenuArrowBar rightbar;
-	AquariaMenuItem arrowUp, arrowDown;
 	int currentPanel;
+	BitmapText subtext;
+	Quad subbox;
+	float subFadeT;
 };
 
 #endif

@@ -2080,7 +2080,12 @@ void DSQ::loadModsCallback(const std::string &filename, intptr_t param)
 	m.id = dsq->modEntries.size();
 
 	TiXmlDocument d;
-	Mod::loadModXML(&d, name);
+	if(!Mod::loadModXML(&d, name))
+	{
+		dsq->debugLog("Failed to load mod xml: " + filename);
+		return;
+	}
+
 	m.type = Mod::getTypeFromXML(d.FirstChildElement("AquariaMod"));
 
 	dsq->modEntries.push_back(m);
@@ -2132,9 +2137,13 @@ void DSQ::loadMods()
 	modEntries.clear();
 
 #ifdef BBGE_BUILD_VFS
+	ttvfs::VFSDir *mods = vfs.GetDir(mod.getBaseModPath().c_str());
+	if(mods)
+		mods->load(false); // refresh filesystem
+
 	// first load the packages, then enumerate XMLs
-	forEachFile(mod.getBaseModPath(), ".zip", loadModPackagesCallback, 0);
 	forEachFile(mod.getBaseModPath(), ".aqmod", loadModPackagesCallback, 0);
+	forEachFile(mod.getBaseModPath(), ".zip", loadModPackagesCallback, 0);
 #endif
 
 	forEachFile(mod.getBaseModPath(), ".xml", loadModsCallback, 0);
@@ -2145,17 +2154,17 @@ void DSQ::applyPatches()
 {
 #ifndef AQUARIA_DEMO
 #ifdef BBGE_BUILD_VFS
-	//#ifdef BBGE_BUILD_MACOSX
-	// HACK: This should be in Core::setupVFS() !! (but dsq is unknown there)
-	// This is to correctly place the override files from _hackfixes.lvpa, which are in this dir always 
-	vfs.Mount("_mods", mod.getBaseModPath().c_str(), true);
-	//#endif
+
+	// This is to allow files in patches to override files in mods on non-win32 systems (theoretically)
+	if(!vfs.GetDir("_mods"))
+	{
+		vfs.MountExternalPath(mod.getBaseModPath().c_str(), "_mods");
+	}
 
 	// user wants mods, but not yet loaded
 	if(activePatches.size() && modEntries.empty())
 		loadMods();
 
-	// FG: FIXME: its a std::set, optimize access!!
 	for (std::set<std::string>::iterator it = activePatches.begin(); it != activePatches.end(); ++it)
 		for(int i = 0; i < modEntries.size(); ++i)
 			if(modEntries[i].type == MODTYPE_PATCH)
@@ -2184,7 +2193,6 @@ static void refr_insert(VFILE *vf, void *user)
     if(dotpos == std::string::npos || pathstart == std::string::npos || dotpos < pathstart)
         return; // whoops
 
-    //std::string dbg = t.substr(pathstart + 4, dotpos - (pathstart + 4));
     files->insert(t.substr(pathstart + 4, dotpos - (pathstart + 4)));
 }
 
@@ -2867,7 +2875,7 @@ static void _CloseSubdirCallback(ttvfs::VFSDir *vd, void*)
 void DSQ::unloadMods()
 {
 #ifdef BBGE_BUILD_VFS
-	ttvfs::VFSDir *mods = vfs.GetDir("_mods");
+	ttvfs::VFSDir *mods = vfs.GetDir(mod.getBaseModPath().c_str());
 	if(mods)
 		mods->forEachDir(_CloseSubdirCallback);
 #endif
@@ -3397,6 +3405,10 @@ bool DSQ::confirm(const std::string &text, const std::string &image, bool ok, fl
 	bgLabel->scale.interpolateTo(Vector(1,1), t);
 	addRenderObject(bgLabel, LR_CONFIRM);
 
+	const int GUILEVEL_CONFIRM = 200;
+
+	AquariaGuiElement::currentGuiInputLevel = GUILEVEL_CONFIRM;
+
 	dsq->main(t);
 
 	float t2 = 0.05;
@@ -3414,10 +3426,6 @@ bool DSQ::confirm(const std::string &text, const std::string &image, bool ok, fl
 	no->alpha.interpolateTo(1, t2);
 	addRenderObject(no, LR_CONFIRM);
 	*/
-
-	const int GUILEVEL_CONFIRM = 200;
-
-	AquariaGuiElement::currentGuiInputLevel = GUILEVEL_CONFIRM;
 
 	AquariaMenuItem *yes=0;
 	AquariaMenuItem *no=0;
@@ -3509,8 +3517,16 @@ bool DSQ::confirm(const std::string &text, const std::string &image, bool ok, fl
 
 	bgLabel->safeKill();
 	txt->safeKill();
-	if (yes)	yes->safeKill();
-	if (no)		no->safeKill();
+	if (yes)
+	{
+		yes->setFocus(false);
+		yes->safeKill();
+	}
+	if (no)
+	{
+		no->setFocus(false);
+		no->safeKill();
+	}
 
 	bool ret = (confirmDone == 1);
 

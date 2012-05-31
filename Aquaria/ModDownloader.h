@@ -1,5 +1,6 @@
 #ifndef MODDOWNLOADER_H
 #define MODDOWNLOADER_H
+#ifdef BBGE_BUILD_VFS
 
 #include <string>
 #include <set>
@@ -18,7 +19,7 @@ public:
 	~ModDL();
 	void init();
 
-	void GetModlist(const std::string& url, bool allowChaining);
+	void GetModlist(const std::string& url, bool allowChaining, bool first);
 	void NotifyModlist(ModlistRequest *rq, Network::NetEvent ev, size_t recvd, size_t total);
 	bool ParseModXML(const std::string& fn, bool allowChaining);
 
@@ -33,11 +34,12 @@ public:
 	bool hasUrlFileCached(const std::string& url);
 
 
-	std::set<std::string> knownServers; // FIXME: clear on re-init
+	std::set<std::string> knownServers;
 	std::string tempDir;
 };
 
 extern ModDL moddl;
 
 
+#endif
 #endif

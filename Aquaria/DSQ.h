@@ -271,7 +271,7 @@ public:
 	void shutdown();
 	bool isShuttingDown();
 
-	static void loadModXML(TiXmlDocument *d, std::string modName);
+	static bool loadModXML(TiXmlDocument *d, std::string modName);
 	static ModType getTypeFromXML(TiXmlElement *xml);
 
 protected:

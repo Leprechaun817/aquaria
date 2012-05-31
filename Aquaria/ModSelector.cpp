@@ -30,6 +30,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #endif
 
 #define MOD_ICON_SIZE 150
+#define MINI_ICON_SIZE 32
 
 
 static bool _modname_cmp(const ModIcon *a, const ModIcon *b)
@@ -38,7 +39,7 @@ static bool _modname_cmp(const ModIcon *a, const ModIcon *b)
 }
 
 ModSelectorScreen::ModSelectorScreen() : Quad(), ActionMapper(),
-currentPanel(-1), gotServerList(false), dlText(&dsq->smallFont)
+currentPanel(-1), gotServerList(false), dlText(&dsq->smallFont), subtext(&dsq->subsFont)
 {
 	followCamera = 1;
 	shareAlphaWithChildren = false;
@@ -46,6 +47,8 @@ currentPanel(-1), gotServerList(false), dlText(&dsq->smallFont)
 	alphaMod = 0.1f;
 	color = 0;
 	globeIcon = NULL;
+	modsIcon = NULL;
+	subFadeT = -1;
 }
 
 void ModSelectorScreen::moveUp()
@@ -58,12 +61,13 @@ void ModSelectorScreen::moveDown()
 	move(-5);
 }
 
-void ModSelectorScreen::move(int ud)
+void ModSelectorScreen::move(int ud, bool instant /* = false */)
 {
 	IconGridPanel *grid = panels[currentPanel];
 	InterpolatedVector& v = grid->position;
-	float ch = ud * 42;
-	if(v.isInterpolating())
+	const float ch = ud * 42;
+	const float t = instant ? 0.0f : 0.2f;
+	if(!instant && v.isInterpolating())
 	{
 		v.data->from = v;
 		v.data->target.y += ch;
@@ -80,11 +84,11 @@ void ModSelectorScreen::move(int ud)
 		v2.y += ch; // scroll down == grid pos y gets negative (grid scrolls up)
 
 		if(v2.y > 150)
-			grid->position.interpolateTo(Vector(v2.x, 150), 0.4f);
+			grid->position.interpolateTo(Vector(v2.x, 150), t);
 		else if(v2.y < -grid->getUsedY() / 2)
-			grid->position.interpolateTo(Vector(v2.x, -grid->getUsedY() / 2), 0.4f);
+			grid->position.interpolateTo(Vector(v2.x, -grid->getUsedY() / 2), t);
 		else
-			grid->position.interpolateTo(v2, 0.2f, 0, false, true);
+			grid->position.interpolateTo(v2, t, 0, false, true);
 	}
 }
 
@@ -96,6 +100,26 @@ void ModSelectorScreen::onUpdate(float dt)
 	if(dsq->mouse.scrollWheelChange)
 	{
 		move(dsq->mouse.scrollWheelChange);
+	}
+
+	if(subFadeT >= 0)
+	{
+		subFadeT = subFadeT - dt;
+		if(subFadeT <= 0)
+		{
+			subbox.alpha.interpolateTo(0, 1.0f);
+			subtext.alpha.interpolateTo(0, 1.2f);
+		}
+	}
+
+	if(!AquariaGuiElement::currentFocus)
+	{
+		AquariaGuiElement *closest = AquariaGuiElement::getClosestGuiElement(core->mouse.position);
+		if(closest)
+		{
+			debugLog("Lost focus, setting nearest gui element");
+			closest->setFocus(true);
+		}
 	}
 }
 
@@ -113,7 +137,6 @@ void ModSelectorScreen::showPanel(int id)
 		newgrid->scale = Vector(0.8f,0.8f);
 		newgrid->alpha = 0;
 	}
-	newgrid->fade(true, true);
 
 	currentPanel = id;
 
@@ -125,8 +148,7 @@ void ModSelectorScreen::updateFade()
 	// fade out background panels
 	// necessary to do all of them, that icon alphas are 0... they would trigger otherwise, even if invisible because parent panel is not shown
 	for(int i = 0; i < panels.size(); ++i)
-		if(i != currentPanel)
-			panels[i]->fade(false, true);
+		panels[i]->fade(i == currentPanel, true);
 }
 
 static void _MenuIconClickCallback(int id, void *user)
@@ -196,25 +218,27 @@ void ModSelectorScreen::init()
 	arrowUp.useQuad("Gui/arrow-left");
 	arrowUp.useSound("click");
 	arrowUp.useGlow("particles/glow", 128, 64);
-	arrowUp.position = Vector(0, -200);
+	arrowUp.position = Vector(0, -230);
 	arrowUp.followCamera = 1;
 	arrowUp.rotation.z = 90;
 	arrowUp.event.set(MakeFunctionEvent(ModSelectorScreen, moveUp));
 	arrowUp.guiInputLevel = 100;
 	arrowUp.alpha = 0;
 	arrowUp.alpha.interpolateTo(1, 0.2f);
+	arrowUp.setDirMove(DIR_DOWN, &arrowDown);
 	rightbar.addChild(&arrowUp, PM_STATIC);
 
 	arrowDown.useQuad("Gui/arrow-right");
 	arrowDown.useSound("click");
 	arrowDown.useGlow("particles/glow", 128, 64);
-	arrowDown.position = Vector(0, 200);
+	arrowDown.position = Vector(0, 170);
 	arrowDown.followCamera = 1;
 	arrowDown.rotation.z = 90;
 	arrowDown.event.set(MakeFunctionEvent(ModSelectorScreen, moveDown));
 	arrowDown.guiInputLevel = 100;
 	arrowDown.alpha = 0;
 	arrowDown.alpha.interpolateTo(1, 0.2f);
+	arrowDown.setDirMove(DIR_UP, &arrowUp);
 	rightbar.addChild(&arrowDown, PM_STATIC);
 
 	dlText.alpha = 0;
@@ -224,16 +248,31 @@ void ModSelectorScreen::init()
 	dlText.followCamera = 1;
 	addChild(&dlText, PM_STATIC);
 
-	// NEW GRID VIEW
-
 	initModAndPatchPanel();
 	// net panel inited on demand
 
 	showPanel(0);
 
-	// we abuse those
-	dsq->subtext->alpha = 1.2f;
-	dsq->subbox->alpha = 1;
+	subbox.position = Vector(0,260);
+	subbox.alpha = 0;
+	subbox.alphaMod = 0.7;
+	subbox.followCamera = 1;
+	subbox.autoWidth = AUTO_VIRTUALWIDTH;
+	subbox.setHeight(80);
+	subbox.color = Vector(0, 0, 0);
+	addChild(&subbox, PM_STATIC);
+
+	subtext.position = Vector(0,230);
+	subtext.followCamera = 1;
+	subtext.alpha = 0;
+	subtext.setFontSize(12);
+	subtext.setWidth(800);
+	subtext.setAlign(ALIGN_CENTER);
+	addChild(&subtext, PM_STATIC);
+
+	dsq->toggleVersionLabel(false);
+
+	modsIcon->setFocus(true);
 
 	// TODO: keyboard/gamepad control
 }
@@ -305,37 +344,47 @@ void ModSelectorScreen::initNetPanel()
 		std::string serv = dsq->user.network.masterServer;
 		if(serv.empty())
 			serv = DEFAULT_MASTER_SERVER;
-		moddl.GetModlist(serv, true);
+		moddl.GetModlist(serv, true, true);
 #endif
-		gotServerList = true; // try only once, for now
+		gotServerList = true; // try this only once (is automatically reset on failure)
 	}
 #endif
-
-	updateFade();
 }
 
-static void _ShareAllAlpha(RenderObject *r)
+void ModSelectorScreen::setSubText(const std::string& s)
 {
-	r->shareAlphaWithChildren = true;
+	subtext.setText(s);
+	subtext.alpha.interpolateTo(1, 0.2f);
+	subbox.alpha.interpolateTo(1, 0.2f);
+	subFadeT = 1;
+}
+
+static void _FadeOutAll(RenderObject *r, float t)
+{
+	//r->shareAlphaWithChildren = true;
+	r->alpha.interpolateTo(0, t);
 	for(RenderObject::Children::iterator it = r->children.begin(); it != r->children.end(); ++it)
-		_ShareAllAlpha(*it);
+		_FadeOutAll(*it, t);
 }
 
 void ModSelectorScreen::close()
 {
-	for(int i = 0; i < panels.size(); ++i)
+	/*for(int i = 0; i < panels.size(); ++i)
 		if(i != currentPanel)
-			panels[i]->setHidden(true);
+			panels[i]->setHidden(true);*/
 
 	const float t = 0.5f;
-	_ShareAllAlpha(this);
+	_FadeOutAll(this, t);
 	//panels[currentPanel]->scale.interpolateTo(Vector(0.9f, 0.9f), t); // HMM
-	dsq->subtext->alpha.interpolateTo(0, t/1.2f);
-	dsq->subbox->alpha.interpolateTo(0, t);
-	dlText.setHidden(true);
+	dsq->user.save();
+	dsq->toggleVersionLabel(true);
+
+	// kinda hackish
+	/*dlText.setHidden(true);
 	arrowDown.glow->setHidden(true);
 	arrowUp.glow->setHidden(true);
-	dsq->user.save();
+	subbox.setHidden(true);
+	subtext.setHidden(true);*/
 }
 
 JuicyProgressBar::JuicyProgressBar() : Quad(), txt(&dsq->smallFont)
@@ -364,21 +413,52 @@ void JuicyProgressBar::progress(float p)
 	perc = p;
 }
 
-BasicIcon::BasicIcon() : AquariaGuiQuad(), mouseDown(false),
-scaleNormal(1,1), scaleBig(scaleNormal * 1.1f)
+BasicIcon::BasicIcon()
+: mouseDown(false), scaleNormal(1,1), scaleBig(scaleNormal * 1.1f)
 {
+	// HACK: Because AquariaMenuItem assigns onClick() in it's ctor,
+	// but we handle this ourselves.
+	clearCreatedEvents();
+	clearActions();
+	shareAlpha = true;
+	guiInputLevel = 100;
 }
 
 bool BasicIcon::isGuiVisible()
 {
-	return !isHidden() && alpha.x > 0 && alphaMod > 0;
+	return !isHidden() && alpha.x > 0.1f && alphaMod > 0.1f && (!parent || parent->alpha.x == 1);
+}
+
+bool BasicIcon::isCursorInMenuItem()
+{
+	if(quad)
+		return quad->isCoordinateInside(core->mouse.position);
+	return AquariaMenuItem::isCursorInMenuItem();
 }
 
 void BasicIcon::onUpdate(float dt)
 {
-	AquariaGuiQuad::onUpdate(dt);
+	AquariaMenuItem::onUpdate(dt);
 
-	if (isCoordinateInside(core->mouse.position))
+	// Autoscroll if selecting icon outside of screen
+	if(hasFocus && dsq->modSelectorScr)
+	{
+		Vector pos = getRealPosition();
+		if(pos.y < 20 || pos.y > 580)
+		{
+			if(pos.y < 300)
+				dsq->modSelectorScr->move(5, true);
+			else
+				dsq->modSelectorScr->move(-5, true);
+			core->main(FRAME_TIME); // HACK: this is necessary to correctly position the mouse on the object after mofing the panel
+			setFocus(true); // re-position mouse
+		}
+	}
+
+	if(!quad)
+		return;
+
+	if (hasInput() && quad->isCoordinateInside(core->mouse.position))
 	{
 		scale.interpolateTo(scaleBig, 0.1f);
 		const bool anyButton = core->mouse.buttons.left || core->mouse.buttons.right;
@@ -388,7 +468,7 @@ void BasicIcon::onUpdate(float dt)
 		}
 		else if (!anyButton && mouseDown)
 		{
-			if(alpha.x > 0.1f) // do not trigger if invis
+			if(isGuiVisible()) // do not trigger if invis
 				onClick();
 			mouseDown = false;
 		}
@@ -404,8 +484,8 @@ void SubtitleIcon::onUpdate(float dt)
 {
 	BasicIcon::onUpdate(dt);
 
-	if (alpha.x > 0.1f && isCoordinateInside(core->mouse.position))
-		dsq->subtext->setText(label);
+	if (dsq->modSelectorScr && isGuiVisible() && quad && quad->isCoordinateInside(core->mouse.position))
+		dsq->modSelectorScr->setSubText(label);
 }
 
 void BasicIcon::onClick()
@@ -456,13 +536,13 @@ void ModIcon::onClick()
 			{
 				dsq->sound->playSfx("pet-off");
 				dsq->unapplyPatch(fname);
-				dsq->screenMessage(modname + " - deactivated"); // DEBUG
+				//dsq->screenMessage(modname + " - deactivated"); // DEBUG
 			}
 			else
 			{
 				dsq->sound->playSfx("pet-on");
 				dsq->applyPatch(fname);
-				dsq->screenMessage(modname + " - activated"); // DEBUG
+				//dsq->screenMessage(modname + " - activated"); // DEBUG
 			}
 			updateStatus();
 			break;
@@ -483,14 +563,15 @@ void ModIcon::loadEntry(const ModEntry& entry)
 
 	texToLoad = dsq->mod.getBaseModPath() + texToLoad;
 
-	setTexture(texToLoad);
-	width = height = MOD_ICON_SIZE;
+	if(!quad)
+		useQuad(texToLoad);
+	quad->setWidthHeight(MOD_ICON_SIZE, MOD_ICON_SIZE);
 
 	TiXmlDocument d;
 
 	dsq->mod.loadModXML(&d, entry.path);
 
-	label = "No Description";
+	std::string ds = "No Description";
 
 	TiXmlElement *top = d.FirstChildElement("AquariaMod");
 	if (top)
@@ -500,9 +581,9 @@ void ModIcon::loadEntry(const ModEntry& entry)
 		{
 			if (desc->Attribute("text"))
 			{
-				label = desc->Attribute("text");
-				if (label.size() > 255)
-					label.resize(255);
+				ds = desc->Attribute("text");
+				//if (label.size() > 255)
+				//	label.resize(255);
 			}
 		}
 		TiXmlElement *fullname = top->FirstChildElement("Fullname");
@@ -516,6 +597,9 @@ void ModIcon::loadEntry(const ModEntry& entry)
 			}
 		}
 	}
+
+	label = "--[ " + modname + " ]--\n" + ds;
+
 	updateStatus();
 }
 
@@ -526,14 +610,14 @@ void ModIcon::updateStatus()
 		if(dsq->isPatchActive(fname))
 		{
 			// enabled
-			color.interpolateTo(Vector(1,1,1), 0.1f);
+			quad->color.interpolateTo(Vector(1,1,1), 0.1f);
 			alpha.interpolateTo(1, 0.2f);
 			scaleNormal = Vector(1,1);
 		}
 		else
 		{
 			// disabled
-			color.interpolateTo(Vector(0.5f, 0.5f, 0.5f), 0.1f);
+			quad->color.interpolateTo(Vector(0.5f, 0.5f, 0.5f), 0.1f);
 			alpha.interpolateTo(0.6f, 0.2f);
 			scaleNormal = Vector(0.8f,0.8f);
 		}
@@ -546,34 +630,91 @@ void ModIcon::updateStatus()
 
 
 ModIconOnline::ModIconOnline()
-: SubtitleIcon(), pb(0), extraIcon(0), clickable(true)
-// FIXME clickable - need to dl image first? better not. but what else to do to prevent messing up the progressbar?
+: SubtitleIcon(), pb(0), extraIcon(0), statusIcon(0), clickable(true), isPatch(false), hasUpdate(false)
 {
 	label = desc;
-	width = height = MOD_ICON_SIZE;
+}
+
+bool ModIconOnline::hasPkgOnDisk()
+{
+	if(localname.empty())
+		return false;
+	std::string modfile = dsq->mod.getBaseModPath() + localname + ".aqmod";
+	return exists(modfile.c_str(), false, true);
 }
 
 // return true if the desired texture could be set
 bool ModIconOnline::fixIcon()
 {
-	if(exists(iconfile))
+	bool result = false;
+	if(exists(iconfile, false, true))
 	{
-		setTexture(iconfile);
-		width = height = MOD_ICON_SIZE;
-		return Texture::textureError == TEXERR_OK;
+		if(quad)
+		{
+			quad->fadeAlphaWithLife = true;
+			quad->setLife(1);
+			quad->setDecayRate(2);
+			quad = 0;
+		}
+		useQuad(iconfile);
+		result = Texture::textureError == TEXERR_OK;
 	}
-	if(!texture)
+	if(!quad)
 	{
-		//setTexture("bitblot/logo");
+		//useQuad("bitblot/logo");
 		int i = (rand() % 7) + 1;
 		std::stringstream ss;
 		ss << "fish-000" << i;
-		setTexture(ss.str());
-
-		if(width > MOD_ICON_SIZE || height > MOD_ICON_SIZE)
-			width = height = MOD_ICON_SIZE;
+		useQuad(ss.str());
 	}
-	return false;
+
+	quad->alpha = 0.001;
+	quad->setWidthHeight(MOD_ICON_SIZE, MOD_ICON_SIZE);
+	quad->alpha.interpolateTo(1, 0.5f);
+
+	if(!extraIcon && isPatch)
+	{
+		Vector pos(-MOD_ICON_SIZE/2 + MINI_ICON_SIZE/2, MOD_ICON_SIZE/2 - MINI_ICON_SIZE/2);
+		extraIcon = new Quad("modselect/ico_patch", pos);
+		extraIcon->setWidthHeight(MINI_ICON_SIZE, MINI_ICON_SIZE);
+		quad->addChild(extraIcon, PM_POINTER);
+	}
+
+	if(statusIcon)
+	{
+		statusIcon->fadeAlphaWithLife = true;
+		statusIcon->setLife(1);
+		statusIcon->setDecayRate(2);
+		statusIcon = 0;
+	}
+
+	if(!statusIcon)
+	{
+		Vector pos(MOD_ICON_SIZE/2 - MINI_ICON_SIZE/2, MOD_ICON_SIZE/2 - MINI_ICON_SIZE/2);
+		if(dsq->modIsKnown(localname))
+		{
+			// installed manually?
+			if(!hasPkgOnDisk())
+			{
+				statusIcon = new Quad("modselect/ico_locked", pos);
+			}
+			else if(hasUpdate)
+			{
+				statusIcon = new Quad("modselect/ico_update", pos);
+				statusIcon->alpha.interpolateTo(0.5f, 0.5f, -1, true, true);
+			}
+			else 
+				statusIcon = new Quad("modselect/ico_check", pos);
+		}
+
+		if(statusIcon)
+		{
+			statusIcon->setWidthHeight(MINI_ICON_SIZE, MINI_ICON_SIZE);
+			quad->addChild(statusIcon, PM_POINTER);
+		}
+	}
+
+	return result;
 }
 
 void ModIconOnline::onClick()
@@ -587,13 +728,25 @@ void ModIconOnline::onClick()
 
 	bool success = false;
 
-	if(clickable)
+	if(clickable && !packageUrl.empty())
 	{
 		bool proceed = true;
 		if(dsq->modIsKnown(localname))
 		{
 			mouseDown = false; // HACK: do this here else stack overflow!
-			proceed = dsq->confirm("Mod already exists. Re-download?");
+			if(hasPkgOnDisk())
+			{
+				if(hasUpdate)
+					proceed = dsq->confirm("Download update?"); // TODO: -> stringbank
+				else
+					proceed = dsq->confirm("Mod already exists. Re-download?");
+			}
+			else
+			{
+				dsq->confirm("This mod was installed manually,\nnot messing with it.", "", true);
+				proceed = false;
+			}
+
 		}
 
 		if(proceed && confirmStr.length())
@@ -617,56 +770,48 @@ void ModIconOnline::onClick()
 	if(!success)
 	{
 		SubtitleIcon::onClick(); // denied
-		if(clickable)
-		{
-			mouseDown = false; // HACK: do this here else stack overflow!
-			dsq->confirm("Unable to download file, bad URL", "", true);
-		}
 	}
 }
 
 void ModIconOnline::setDownloadProgress(float p, float barheight /* = 20 */)
 {
-	if(!pb)
-	{
-		pb = new JuicyProgressBar;
-		addChild(pb, PM_POINTER);
-		pb->width = width;
-		pb->height = 0;
-		pb->alpha = 0;
-	}
-
-	if(barheight != pb->height)
-	{
-		pb->height = barheight;
-		pb->width = width;
-		pb->position = Vector(0, (height - pb->height + 1) / 2); // +1 skips a pixel row and looks better
-	}
-
 	if(p >= 0 && p <= 1)
 	{
+		if(!pb)
+		{
+			pb = new JuicyProgressBar;
+			addChild(pb, PM_POINTER);
+			pb->width = quad->width;
+			pb->height = 0;
+			pb->alpha = 0;
+		}
+
+		if(barheight != pb->height)
+		{
+			pb->height = barheight;
+			pb->width = quad->width;
+			pb->position = Vector(0, (quad->height - pb->height + 1) / 2); // +1 skips a pixel row and looks better
+		}
+
 		pb->alpha.interpolateTo(1, 0.2f);
 		pb->progress(p);
 	}
-	else
+	else if(pb)
 	{
-		pb->alpha.interpolateTo(0, 0.2f);
-		pb->progress(0);
+		pb->fadeAlphaWithLife = true;
+		pb->setLife(1);
+		pb->setDecayRate(2);
+		pb = 0;
 	}
-}
-
-void ModIconOnline::updateStatus()
-{
-	// TODO: update extra icon and stuff
 }
 
 #endif // BBGE_BUILD_VFS
 
-MenuBasicBar::MenuBasicBar() : AquariaGuiQuad()
+MenuBasicBar::MenuBasicBar()
 {
 	setTexture("modselect/bar");
 	repeatTextureToFill(true);
-	shareAlphaWithChildren = true;
+	shareAlphaWithChildren = false;
 }
 
 void MenuBasicBar::init()
@@ -676,42 +821,53 @@ void MenuBasicBar::init()
 void MenuIconBar::init()
 {
 	MenuIcon *ico;
-	int y = -height / 2;
+	int y = (-height / 2) - 35;
 
+	
 	ico = new MenuIcon(0);
-	ico->label = "Browse installed mods";
-	ico->setTexture("modselect/hdd");
-	y += ico->height;
+	ico->label = "\nBrowse installed mods"; // TODO: -> stringbank
+	ico->useQuad("modselect/hdd");
+	y += ico->quad->height;
 	ico->position = Vector(0, y);
 	add(ico);
+	dsq->modSelectorScr->modsIcon = ico; // HACK
 
+	MenuIcon *prev = ico;
 	ico = new MenuIcon(1);
-	ico->label = "Browse & enable/disable installed patches";
-	ico->setTexture("modselect/patch");
-	y += ico->height;
+	ico->label = "\nBrowse & enable/disable installed patches";
+	ico->useQuad("modselect/patch");
+	y += ico->quad->height;
 	ico->position = Vector(0, y);
+	ico->setDirMove(DIR_UP, prev);
+	prev->setDirMove(DIR_DOWN, ico);
 	add(ico);
 
+	prev = ico;
 	ico = new MenuIcon(2);
-	ico->label = "Browse mods online";
-	ico->setTexture("modselect/globe");
-	y += ico->height;
+	ico->label = "\nBrowse mods online";
+	ico->useQuad("modselect/globe");
+	y += ico->quad->height;
 	ico->position = Vector(0, y);
+	ico->setDirMove(DIR_UP, prev);
+	prev->setDirMove(DIR_DOWN, ico);
 	add(ico);
 	dsq->modSelectorScr->globeIcon = ico; // HACK
 
+	prev = ico;
 	ico = new MenuIcon(3);
-	ico->label = "Return to title";
-	ico->setTexture("gui/wok-drop");
+	ico->label = "\nReturn to title";
+	ico->useQuad("gui/wok-drop");
 	ico->repeatTextureToFill(false);
-	y += ico->height;
+	y += ico->quad->height;
 	ico->position = Vector(0, y);
+	ico->setDirMove(DIR_UP, prev);
+	prev->setDirMove(DIR_DOWN, ico);
 	add(ico);
 }
 
 void MenuIconBar::add(MenuIcon *ico)
 {
-	ico->width = ico->height = width;
+	ico->quad->setWidthHeight(width, width);
 	ico->followCamera = 1;
 	icons.push_back(ico);
 	addChild(ico, PM_POINTER);
@@ -722,28 +878,29 @@ void MenuArrowBar::init()
 	// TODO: up/down arrow
 }
 
-IconGridPanel::IconGridPanel() : AquariaGuiQuad(), spacing(0), y(0), x(0)
+IconGridPanel::IconGridPanel()
+: spacing(0), y(0), x(0)
 {
 	shareAlphaWithChildren = false; // patch selection icons need their own alpha, use fade() instead
 	alphaMod = 0.01f;
 	color = 0;
 }
 
-void IconGridPanel::add(RenderObject *obj)
+void IconGridPanel::add(BasicIcon *obj)
 {
-	const int xoffs = (-width / 2) + (obj->width / 2) + spacing;
-	const int yoffs = (-height / 2) + obj->height + spacing;
-	const int xlim = width - obj->width;
+	const int xoffs = (-width / 2) + (obj->quad->width / 2) + spacing;
+	const int yoffs = (-height / 2) + obj->quad->height + spacing;
+	const int xlim = width - obj->quad->width;
 	Vector newpos;
 
 	if(x >= xlim)
 	{
 		x = 0;
-		y += (obj->height + spacing);
+		y += (obj->quad->height + spacing);
 	}
 
 	newpos = Vector(x + xoffs, y + yoffs);
-	x += (obj->width + spacing);
+	x += (obj->quad->width + spacing);
 
 	obj->position = newpos;
 	addChild(obj, PM_POINTER);

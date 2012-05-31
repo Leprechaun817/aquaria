@@ -1,4 +1,5 @@
 #include "DSQ.h"
+#include "minihttp.h"
 
 #ifdef BBGE_BUILD_VFS
 
@@ -35,8 +36,8 @@ static void createDir(const char *d)
 // .../_mods/<MODNAME>.zip
 static std::string _PathToModName(const std::string& path)
 {
-	int pos = path.find_last_of('/')+1;
-	int pos2 = path.find_last_of('.');
+	size_t pos = path.find_last_of('/')+1;
+	size_t pos2 = path.find_last_of('.');
 	return path.substr(pos, pos2-pos);
 }
 
@@ -72,8 +73,8 @@ static ModIconOnline *_FindModIconOnline(const std::string& n, bool (*func)(ModI
 class ModlistRequest : public Network::RequestData
 {
 public:
-	ModlistRequest(bool chain) : allowChaining(chain) {}
-	virtual ~ModlistRequest() { std::ostringstream os; os << "~ModlistRequest() " << this; debugLog(os.str()); }
+	ModlistRequest(bool chain) : allowChaining(chain), first(false) {}
+	virtual ~ModlistRequest() {}
 	virtual void notify(NetEvent ev, size_t recvd, size_t total)
 	{
 		moddl.NotifyModlist(this, ev, recvd, total);
@@ -81,12 +82,13 @@ public:
 			delete this;
 	}
 	bool allowChaining;
+	bool first;
 };
 
 class IconRequest : public Network::RequestData
 {
 public:
-	virtual ~IconRequest() { std::ostringstream os; os << "~IconRequest() " << this; debugLog(os.str()); }
+	virtual ~IconRequest() {}
 	virtual void notify(NetEvent ev, size_t recvd, size_t total)
 	{
 		moddl.NotifyIcon(this, ev, recvd, total);
@@ -98,7 +100,7 @@ public:
 class ModRequest : public Network::RequestData
 {
 public:
-	virtual ~ModRequest() { std::ostringstream os; os << "~ModRequest() " << this; debugLog(os.str()); }
+	virtual ~ModRequest() {}
 	virtual void notify(NetEvent ev, size_t recvd, size_t total)
 	{
 		moddl.NotifyMod(this, ev, recvd, total);
@@ -150,8 +152,35 @@ std::string ModDL::remoteToLocalName(const std::string& url)
 	return here;
 }
 
-void ModDL::GetModlist(const std::string& url, bool allowChaining)
+void ModDL::GetModlist(const std::string& url, bool allowChaining, bool first)
 {
+	if(first)
+		knownServers.clear();
+	
+	// Prevent recursion, self-linling, or cycle linking.
+	// In theory, this allows setting up a server network
+	// where each server links to any servers it knows,
+	// without screwing up, but this isn't going to happen anyways.
+	// It's still useful for safety. -- FG
+	if(knownServers.size() > 30)
+	{
+		debugLog("GetModlist: Too many servers. Whaat?!");
+		return;
+	}
+	else
+	{
+		std::string host, dummy_file;
+		int dummy_port;
+		minihttp::SplitURI(url, host, dummy_file, dummy_port);
+		stringToLower(host);
+		if(knownServers.find(host) != knownServers.end())
+		{
+			debugLog("GetModlist: Already seen host: " + host + " - ignoring");
+			return;
+		}
+		knownServers.insert(host);
+	}
+
 	std::ostringstream os;
 	os << "Fetching mods list [" << url << "], chain: " << allowChaining;
 	debugLog(os.str());
@@ -162,17 +191,17 @@ void ModDL::GetModlist(const std::string& url, bool allowChaining)
 
 	ModlistRequest *rq = new ModlistRequest(allowChaining);
 	rq->tempFilename = localName;
-	rq->finalFilename = localName; // FIXME ?
+	rq->finalFilename = localName;
 	rq->allowChaining = allowChaining;
 	rq->url = url;
-	// TODO: add RenderObject to request, and fade out once arrived? Like that it displays a list of servers it's waiting for.
+	rq->first = first;
 
 	Network::download(rq);
 
 	ModSelectorScreen* scr = dsq->modSelectorScr;
 	if(scr)
 	{
-		scr->globeIcon->color.interpolateTo(Vector(1,1,1), 0.3f);
+		scr->globeIcon->quad->color.interpolateTo(Vector(1,1,1), 0.3f);
 		scr->globeIcon->alpha.interpolateTo(0.5f, 0.2f, -1, true, true);
 		scr->dlText.setText("Retrieving online mod list...");
 		scr->dlText.alpha.stopPath();
@@ -194,8 +223,8 @@ void ModDL::NotifyModlist(ModlistRequest *rq, NetEvent ev, size_t recvd, size_t 
 		{
 			scr->globeIcon->alpha.stop();
 			scr->globeIcon->alpha.interpolateTo(1, 0.5f, 0, false, true);
-			scr->globeIcon->color.interpolateTo(Vector(0.5f, 0.5f, 0.5f), 0.3f);
-			scr->dlText.setText("Unable to retrieve online mod list.\nCheck your connection and try again.");
+			scr->globeIcon->quad->color.interpolateTo(Vector(0.5f, 0.5f, 0.5f), 0.3f);
+			scr->dlText.setText("Unable to retrieve online mod list.\nCheck your connection and try again."); // TODO: put into stringbank
 			scr->dlText.alpha = 0;
 			scr->dlText.alpha.ensureData();
 			scr->dlText.alpha.data->path.addPathNode(0, 0);
@@ -203,27 +232,33 @@ void ModDL::NotifyModlist(ModlistRequest *rq, NetEvent ev, size_t recvd, size_t 
 			scr->dlText.alpha.data->path.addPathNode(1, 0.7);
 			scr->dlText.alpha.data->path.addPathNode(0, 1);
 			scr->dlText.alpha.startPath(5);
-			scr->gotServerList = false; // FIXME: not fully correct. only do this for first modlist request!
+
+			// Allow requesting another server list if the initial fetch failed.
+			// Do not care for child servers.
+			if(rq->first)
+				scr->gotServerList = false;
 		}
 		return;
 	}
-
-	// TODO: prevent endless looping
-
 	
 	if(scr)
 	{
 		scr->globeIcon->alpha.stop();
 		scr->globeIcon->alpha.interpolateTo(1, 0.2f);
-		dsq->clickRingEffect(scr->globeIcon->getWorldPosition(), 1);
-		scr->dlText.setText("Retrieving mod list...");
 		scr->dlText.alpha.stopPath();
 		scr->dlText.alpha.interpolateTo(0, 0.3f);
+		if(rq->first)
+			dsq->clickRingEffect(scr->globeIcon->getWorldPosition(), 1);
 	}
 
 	if(!ParseModXML(rq->finalFilename, rq->allowChaining))
 	{
-		dsq->screenMessage("WHAAARGLBLARG"); // FIXME: what
+		if(scr)
+		{
+			scr->dlText.alpha.stopPath();
+			scr->dlText.alpha.interpolateTo(1, 0.5f);
+			scr->dlText.setText("Server error!\nBad XML, please contact server admin.\nURL: " + rq->url); // TODO: -> stringbank
+		}
 	}
 }
 
@@ -246,13 +281,12 @@ bool ModDL::ParseModXML(const std::string& fn, bool allowChaining)
 		...
 		<AquariaMod>
 			<Fullname text="Jukebox"/>
-			<Description text="Listen to all the songs in the game!"/>
-			<Icon url="localhost/aq/jukebox.png" />
-			<Package url="localhost/aq/jukebox.aqmod" saveAs="jukebox"/> // -- saveAs is optional, and ".aqmod" appended to it
-			<Author name="Dolphin's Cry" />  //-- optional tag // TODO
+			<Description text="Listen to all the songs in the game!" />
+			<Icon url="localhost/aq/jukebox.png" size="1234" /> // -- size is optional, used to detect file change on server
+			<Package url="localhost/aq/jukebox.aqmod" saveAs="jukebox" size="1234" /> // -- saveAs is optional, and ".aqmod" appended to it
+			<Author name="Dolphin's Cry" />  //-- optional tag
 			<Confirm text="" />  //-- optional tag, pops up confirm dialog
 			<Properties type="patch" /> //-- optional tag, if not given, "mod" is assumed.
-			//   valid is also "patch", and (TODO) maybe more
 		</AquariaMod>
 		
 		<AquariaMod>
@@ -265,7 +299,7 @@ bool ModDL::ParseModXML(const std::string& fn, bool allowChaining)
 	if(!modlist)
 	{
 		debugLog("ModList root tag not found");
-		return false; // whoops?
+		return false;
 	}
 
 	if(allowChaining)
@@ -276,7 +310,7 @@ bool ModDL::ParseModXML(const std::string& fn, bool allowChaining)
 			int chain = 0;
 			servx->Attribute("chain", &chain);
 			if(const char *url = servx->Attribute("url"))
-				GetModlist(url, chain);
+				GetModlist(url, chain, false);
 
 			servx = servx->NextSiblingElement("Server");
 		}
@@ -286,12 +320,17 @@ bool ModDL::ParseModXML(const std::string& fn, bool allowChaining)
 	while(modx)
 	{
 		std::string namestr, descstr, iconurl, pkgurl, confirmStr, localname;
-		TiXmlElement *fullname, *desc, *icon, *pkg, *confirm;
+		std::string sizestr;
+		bool isPatch = false;
+		int serverSize = 0;
+		int serverIconSize = 0;
+		TiXmlElement *fullname, *desc, *icon, *pkg, *confirm, *props;
 		fullname = modx->FirstChildElement("Fullname");
 		desc = modx->FirstChildElement("Description");
 		icon = modx->FirstChildElement("Icon");
 		pkg = modx->FirstChildElement("Package");
 		confirm = modx->FirstChildElement("Confirm");
+		props = modx->FirstChildElement("Properties");
 
 		if(fullname && fullname->Attribute("text"))
 			namestr = fullname->Attribute("text");
@@ -299,8 +338,16 @@ bool ModDL::ParseModXML(const std::string& fn, bool allowChaining)
 		if(desc && desc->Attribute("text"))
 			descstr = desc->Attribute("text");
 
-		if(icon && icon->Attribute("url"))
-			iconurl = icon->Attribute("url");
+		if(icon)
+		{
+			if(icon->Attribute("url"))
+				iconurl = icon->Attribute("url");
+			if(icon->Attribute("size"))
+				icon->Attribute("size", &serverIconSize);
+		}
+
+		if(props && props->Attribute("type"))
+			isPatch = !strcmp(props->Attribute("type"), "patch");
 
 		if(pkg)
 		{
@@ -310,9 +357,10 @@ bool ModDL::ParseModXML(const std::string& fn, bool allowChaining)
 				localname = _PathToModName(pkgurl);
 			}
 			if(pkg->Attribute("saveAs"))
-			{
 				localname = _PathToModName(pkg->Attribute("saveAs"));
-			}
+
+			if(pkg->Attribute("size"))
+				pkg->Attribute("size", &serverSize);
 		}
 
 		if(confirm && confirm->Attribute("text"))
@@ -327,6 +375,12 @@ bool ModDL::ParseModXML(const std::string& fn, bool allowChaining)
 
 		std::string localIcon = remoteToLocalName(iconurl);
 
+		size_t localIconSize = 0;
+		if(ttvfs::VFSFile *vf = vfs.GetFile(localIcon.c_str()))
+		{
+			localIconSize = vf->size();
+		}
+
 		debugLog("NetMods: " + namestr);
 
 		ModIconOnline *ico = NULL;
@@ -339,16 +393,35 @@ bool ModDL::ParseModXML(const std::string& fn, bool allowChaining)
 			ico->desc = descstr;
 			ico->confirmStr = confirmStr;
 			ico->localname = localname;
-			ico->label = "[" + namestr + "] " + descstr;
-			grid->add(ico);
-		}
-		if(!ico->fixIcon()) // try to set texture, if its not there, download it
-		{
-			if(ico)
+			ico->label = "--[ " + namestr + " ]--\n" + descstr;
+			ico->isPatch = isPatch;
+
+			if(serverSize && dsq->modIsKnown(localname))
+			{
+				std::string modpkg = dsq->mod.getBaseModPath() + localname;
+				modpkg += ".aqmod";
+				ttvfs::VFSFile *vf = vfs.GetFile(modpkg.c_str());
+				if(vf)
+				{
+					size_t sz = vf->size();
+					ico->hasUpdate = (serverSize && ((size_t)serverSize != sz));
+				}
+				// if vf==NULL, then the mod was not installed with the mod downloader.
+				// There is a warning on download that's supposed to prevent this.
+				// However, if we end up with vf==NULL, there's not much to do about it.
+			}
+
+			// try to set texture, if its not there, download it.
+			// download a new icon if file size changed.
+			if(!ico->fixIcon() || !localIconSize || (serverIconSize && (size_t)serverIconSize != localIconSize))
+			{
 				ico->setDownloadProgress(0, 10);
-			GetIcon(iconurl, localIcon);
-			// we do not pass the ico ptr to the call above; otherwise it will crash if the mod menu is closed
-			// while a download is in progress
+				GetIcon(iconurl, localIcon);
+				// we do not pass the ico ptr to the call above; otherwise it will crash if the mod menu is closed
+				// while a download is in progress
+			}
+
+			grid->add(ico);
 		}
 	}
 
@@ -375,6 +448,8 @@ void ModDL::GetMod(const std::string& url, const std::string& localname)
 
 void ModDL::GetIcon(const std::string& url, const std::string& localname)
 {
+	if(url.empty())
+		return;
 	IconRequest *rq = new IconRequest;
 	rq->url = url;
 	rq->finalFilename = localname;
@@ -408,7 +483,8 @@ void ModDL::NotifyMod(ModRequest *rq, NetEvent ev, size_t recvd, size_t total)
 	ModIconOnline *ico = _FindModIconOnline(rq->url, _CompareByPackageURL);
 	if(!ico)
 	{
-		// TODO: screen message?
+		if(ev == NE_FINISH)
+			dsq->centerMessage("Finished downloading mod " + rq->modname, 420); // TODO: -> stringbank
 		return;
 	}
 
@@ -459,14 +535,17 @@ void ModDL::NotifyMod(ModRequest *rq, NetEvent ev, size_t recvd, size_t total)
 			return;
 		}
 
-
-		if(!dsq->modIsKnown(localname)) // if it is already known, the file was re-downloaded
+		// if it is already known, the file was re-downloaded
+		if(!dsq->modIsKnown(localname))
 		{
 			// yay, got something new!
 			DSQ::loadModsCallback(archiveFile, 0); // does not end in ".xml" but thats no problem here
 			if(dsq->modSelectorScr)
 				dsq->modSelectorScr->initModAndPatchPanel(); // HACK
 		}
+
+		ico->hasUpdate = false;
+		ico->fixIcon();
 	}
 }
 
