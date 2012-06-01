@@ -44,7 +44,7 @@ public:
 protected:
 	virtual void _OnClose()
 	{
-		puts("_OnClose()");
+		//puts("_OnClose()");
 		minihttp::HttpSocket::_OnClose();
 
 		const Request& r = GetCurrentRequest();
@@ -57,7 +57,7 @@ protected:
 	}
 	virtual void _OnOpen()
 	{
-		puts("_OnOpen()");
+		//puts("_OnOpen()");
 		minihttp::HttpSocket::_OnOpen();
 
 		const Request& r = GetCurrentRequest();
@@ -68,7 +68,7 @@ protected:
 	{
 		const Request& r = GetCurrentRequest();
 		RequestData *data = (RequestData*)(r.user);
-		printf("_OnRequestDone(): %s\n", r.resource.c_str());
+		//printf("_OnRequestDone(): %s\n", r.resource.c_str());
 		if(data->fp)
 		{
 			fclose(data->fp);
@@ -114,8 +114,6 @@ protected:
 		data->_th_total = GetContentLen(); // 0 if chunked transfer encoding is used.
 		notifyRequests.push(RequestDataHolder(data));
 	}
-
-	// TODO: handle unexpected disconnect
 };
 
 // for first-time init, and signal to shut down worker thread
@@ -170,28 +168,17 @@ void shutdown()
 // Accessed by worker thread ONLY!
 static minihttp::SocketSet sockets;
 
-static HttpDumpSocket *th_GetSocketForHost(const std::string& id)
-{
-	// TODO: write me
-	return NULL;
-}
-
-static HttpDumpSocket *th_GetIdleSocket()
-{
-	// TODO: write me
-	return NULL;
-}
 
 static HttpDumpSocket *th_CreateSocket()
 {
 	HttpDumpSocket *sock = new HttpDumpSocket;
 	sock->SetAlwaysHandle(false); // only handle incoming data on success
-	sock->SetBufsizeIn(1024 * 64); // FIXME
-	sock->SetKeepAlive(0); // FIXME
+	sock->SetBufsizeIn(1024 * 16);
+	sock->SetKeepAlive(0);
 	sock->SetNonBlocking(true);
 	sock->SetUserAgent(userAgent);
 	sock->SetFollowRedirect(true);
-	sockets.add(sock, true); // FIXME: keep sockets alive even if closed
+	sockets.add(sock, true);
 	return sock;
 }
 
@@ -207,12 +194,7 @@ static bool th_DoSendRequest(RequestData *rq)
 	std::ostringstream hostdesc;
 	hostdesc << get.host << ':' << get.port;
 
-	HttpDumpSocket *sock = th_GetSocketForHost(hostdesc.str());
-	if(!sock)
-		sock = th_GetIdleSocket();
-	if(!sock)
-		sock = th_CreateSocket();
-	// TODO: keep a sane max. limit of sockets
+	HttpDumpSocket *sock = th_CreateSocket();
 
 	get.user = rq;
 	return sock->SendGet(get, false);
