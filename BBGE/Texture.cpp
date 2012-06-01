@@ -294,11 +294,11 @@ void Texture::reload()
 	unload();
 	load(loadName);
 
-	if (ow != -1 && oh != -1)
+	/*if (ow != -1 && oh != -1)
 	{
 		width = ow;
 		height = oh;
-	}
+	}*/
 	debugLog("DONE");
 }
 
