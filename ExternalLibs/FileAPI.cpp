@@ -25,7 +25,7 @@ VFILE *vfopen(const char *fn, const char *mode)
 
 size_t vfread(void *ptr, size_t size, size_t count, VFILE *vf)
 {
-	return vf->read(ptr, size * count);
+	return vf->read(ptr, size * count) / size;
 }
 
 int vfclose(VFILE *vf)
@@ -37,7 +37,7 @@ int vfclose(VFILE *vf)
 
 size_t vfwrite(const void *ptr, size_t size, size_t count, VFILE *vf)
 {
-	return vf->write(ptr, size * count);
+	return vf->write(ptr, size * count) / size;
 }
 
 // return 0 on success, -1 on error
