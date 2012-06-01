@@ -6,7 +6,7 @@
 // for weird gcc/mingw hackfix below
 #include <string.h>
 
-#define PRINTFAIL(s) fprintf(stderr, (s))
+#define PRINTFAIL(s, ...) fprintf(stderr, (s "\n"), __VA_ARGS__)
 
 
 DeflateCompressor::DeflateCompressor()
@@ -50,25 +50,20 @@ void DeflateCompressor::compress(void* dst, uint32 *dst_size, const void* src, u
     c_stream.next_in = (Bytef*)src;
     c_stream.avail_in = (uInt)src_size;
 
-    if (Z_OK != deflate(&c_stream, Z_NO_FLUSH))
-    {
-        PRINTFAIL("ZLIB: Can't compress (zlib: deflate)");
-        *dst_size = 0;
-        return;
-    }
+    int ret = deflate(&c_stream, Z_FINISH);
 
-    if (c_stream.avail_in != 0)
+    switch(ret)
     {
-        PRINTFAIL("Can't compress (zlib: deflate not greedy)");
-        *dst_size = 0;
-        return;
-    }
-
-    if (Z_STREAM_END != deflate(&c_stream, Z_FINISH))
-    {
-        PRINTFAIL("Can't compress (zlib: deflate, finish)");
-        *dst_size = 0;
-        return;
+        case Z_STREAM_END:
+            break; // all good
+        case Z_OK:
+            PRINTFAIL("ZLIB: Output buffer not large enough");
+            *dst_size = 0;
+            return;
+        default:
+            PRINTFAIL("ZLIB: Error %d", ret);
+            *dst_size = 0;
+            return;
     }
 
     if (Z_OK != deflateEnd(&c_stream))
@@ -168,9 +163,7 @@ void DeflateCompressor::Decompress(void)
         decompress((void*)target, &origsize, (const void*)contents(), size(), _windowBits);
         if(origsize != rs)
         {
-            char errbuf[256];
-            sprintf(errbuf, "DeflateCompressor: Inflate error! cursize=%u origsize=%u realsize=%u",size(),origsize,rs);
-            PRINTFAIL(errbuf);
+            PRINTFAIL("DeflateCompressor: Inflate error! cursize=%u origsize=%u realsize=%u",size(),origsize,rs);
             delete [] target;
             return;
         }
@@ -179,7 +172,7 @@ void DeflateCompressor::Decompress(void)
         delete [] target;
         _real_size = 0;
         _iscompressed = false;
-	}
+    }
 
 }
 
@@ -217,6 +210,7 @@ int DeflateCompressor::decompressBlockwise()
             switch (ret) {
             case Z_NEED_DICT:
             case Z_STREAM_ERROR:
+            case Z_BUF_ERROR:
                 ret = Z_DATA_ERROR;     /* and fall through */
             case Z_DATA_ERROR:
             case Z_MEM_ERROR:

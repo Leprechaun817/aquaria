@@ -914,6 +914,8 @@ float lerp(const float &v1, const float &v2, float dt, int lerpType)
 }
 
 
+#if 0
+
 #include <zlib.h>
 #include <assert.h>
 
@@ -985,7 +987,6 @@ int packFile(const std::string &sourcef, const std::string &destf, int level)
     return Z_OK;
 }
 
-#if 0
 /* Decompress from file source to file dest until stream ends or EOF.
    inf() returns Z_OK on success, Z_MEM_ERROR if memory could not be
    allocated for processing, Z_DATA_ERROR if the deflate data is

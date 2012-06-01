@@ -285,7 +285,7 @@ enum LerpType
 
 float lerp(const float &v1, const float &v2, float dt, int lerpType);
 
-int packFile(const std::string &sourcef, const std::string &destf, int level);
+//int packFile(const std::string &sourcef, const std::string &destf, int level);
 //int unpackFile(const std::string &sourcef, const std::string &destf);
 
 void openURL(const std::string &url);

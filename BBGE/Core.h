@@ -1306,6 +1306,7 @@ public:
 	CoreSettings settings;
 
 	int tgaSave(const char *filename, short int width, short int height, unsigned char	pixelDepth, unsigned char	*imageData);
+	int zgaSave(const char *filename, short int width, short int height, unsigned char	pixelDepth, unsigned char	*imageData);
 
 	volatile int dbg_numThreadDecoders;
 

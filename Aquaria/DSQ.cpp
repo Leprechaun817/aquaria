@@ -3295,10 +3295,6 @@ void DSQ::doSaveSlotMenu(SaveSlotMode ssm, const Vector &position)
 			{
 				std::ostringstream os;
 				os << dsq->getSaveDirectory() << "/screen-" << numToZeroString(selectedSaveSlot->getSlotIndex(), 4) << ".zga";
-				std::string tempfile = dsq->getSaveDirectory() + "/poot-s.tmp";
-
-				//saveCenteredScreenshotTGA(tempfile, scrShotWidth);
-				//saveSizedScreenshotTGA(tempfile,512,1);
 
 				// Cut off top and bottom to get a 4:3 aspect ratio.
 				int adjHeight = (scrShotWidth * 3.0f) / 4.0f;
@@ -3307,12 +3303,8 @@ void DSQ::doSaveSlotMenu(SaveSlotMode ssm, const Vector &position)
 				int adjOffset = scrShotWidth * ((scrShotHeight-adjHeight)/2) * 4;
 				memmove(scrShotData, scrShotData + adjOffset, adjImageSize);
 				memset(scrShotData + adjImageSize, 0, imageDataSize - adjImageSize);
-				tgaSave(tempfile.c_str(), scrShotWidth, scrShotHeight, 32, scrShotData);
+				zgaSave(os.str().c_str(), scrShotWidth, scrShotHeight, 32, scrShotData);
 				scrShotData = 0;  // deleted by tgaSave()
-
-				// FIXME: Get rid of tempfile and compress in-memory
-				packFile(dsq->getSaveDirectory() + "/poot-s.tmp", os.str(),9);
-				remove((dsq->getSaveDirectory() + "/poot-s.tmp").c_str());
 			}
 
 			PlaySfx sfx;
