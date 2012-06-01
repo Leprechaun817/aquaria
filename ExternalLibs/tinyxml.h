@@ -42,6 +42,7 @@ distribution.
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <stdio.h>
 
 // Help out windows:
 #if defined( _DEBUG ) && !defined( DEBUG )

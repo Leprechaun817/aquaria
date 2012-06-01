@@ -602,7 +602,7 @@ void forEachFile(std::string path, std::string type, void callback(const std::st
 		debugLog("Path '" + path + "' does not exist");
 		return;
 	}
-	vd->load(false); // FIXME: need to reload when enumerating files?
+	vd->load(false);
 	vfscallback_s dat;
 	dat.path = &path;
 	dat.ext = type.length() ? type.c_str() : NULL;

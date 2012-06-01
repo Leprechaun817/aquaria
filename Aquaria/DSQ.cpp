@@ -2082,7 +2082,9 @@ void DSQ::loadModsCallback(const std::string &filename, intptr_t param)
 	TiXmlDocument d;
 	if(!Mod::loadModXML(&d, name))
 	{
-		dsq->debugLog("Failed to load mod xml: " + filename);
+		std::ostringstream os;
+		os << "Failed to load mod xml: " << filename << " -- Error: " << d.ErrorDesc();
+		dsq->debugLog(os.str());
 		return;
 	}
 
@@ -2137,9 +2139,6 @@ void DSQ::loadMods()
 	modEntries.clear();
 
 #ifdef BBGE_BUILD_VFS
-	ttvfs::VFSDir *mods = vfs.GetDir(mod.getBaseModPath().c_str());
-	if(mods)
-		mods->load(false); // refresh filesystem
 
 	// first load the packages, then enumerate XMLs
 	forEachFile(mod.getBaseModPath(), ".aqmod", loadModPackagesCallback, 0);
