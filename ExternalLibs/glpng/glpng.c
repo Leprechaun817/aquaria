@@ -84,6 +84,9 @@ static void checkForGammaEnv()
 
 /* Returns a safe texture size to use (ie a power of 2), based on the current texture size "i" */
 static int SafeSize(int i) {
+	if (i >= 24) {
+		i /= 2;
+	}
 	int p;
 
 	if (i > MaxTextureSize) return MaxTextureSize;
