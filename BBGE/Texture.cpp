@@ -42,7 +42,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #endif
 
 #ifdef BBGE_BUILD_OPENGL
-	GLint Texture::filter = GL_NEAREST;
+	GLint Texture::filter = GL_LINEAR;
 
 	GLint Texture::format = 0;
 #endif
