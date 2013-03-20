@@ -7043,15 +7043,15 @@ void Avatar::onUpdate(float dt)
 					myZoom.interpolateTo(zoomMove, time, 0, 0, 1);
 			}
 
-			if (myZoom.x < game->maxZoom)
+			if (myZoom.x * 1.5 < game->maxZoom)
 			{
 				core->globalScale.x = game->maxZoom;
 				core->globalScale.y = game->maxZoom;
 			}
 			else
 			{
-				core->globalScale.x = myZoom.x;
-				core->globalScale.y = myZoom.y;
+				core->globalScale.x = myZoom.x * 1.5;
+				core->globalScale.y = myZoom.y * 1.5;
 			}
 
 		}
